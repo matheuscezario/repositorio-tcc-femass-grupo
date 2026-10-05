@@ -45,12 +45,37 @@ public class TCCController {
         return ResponseEntity.ok().body(tcc);
     }
 
+    @PostMapping(
+        value = "/proposta",
+        produces = MediaType.APPLICATION_JSON_VALUE,
+        consumes = MediaType.APPLICATION_JSON_VALUE
+)
+public ResponseEntity<TCCDTO> criarProposta(
+        @RequestBody TCCDTO tcc,
+        Principal connectedUser
+) {
+    TCCDTO proposta = service.criarProposta(tcc, connectedUser);
+    return ResponseEntity.ok().body(proposta);
+}
+
     @PutMapping(value = "/{id}" , produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<TCCDTO> update(@PathVariable UUID id, @RequestBody TCCUpdateDTO tcc){
 
         TCCDTO updateTcc = service.update(id, tcc);
         return ResponseEntity.ok().body(updateTcc);
 
+    }
+
+    @PutMapping(value = "/{id}/aprovar-orientador", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<TCCDTO> aprovarPeloOrientador(@PathVariable UUID id) {
+        TCCDTO tcc = service.aprovarPeloOrientador(id);
+        return ResponseEntity.ok().body(tcc);
+    }
+
+    @PutMapping(value = "/{id}/aprovar-coordenador", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<TCCDTO> aprovarPeloCoordenador(@PathVariable UUID id) {
+        TCCDTO tcc = service.aprovarPeloCoordenador(id);
+        return ResponseEntity.ok().body(tcc);
     }
 
     @DeleteMapping(value = "/{id}")

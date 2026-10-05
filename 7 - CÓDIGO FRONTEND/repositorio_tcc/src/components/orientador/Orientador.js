@@ -368,21 +368,62 @@ class Orientador extends Component {
                     <h4 className="text-center">Lista de Orientadores</h4>
                     <div className="container">
                         <table className="table table-striped table-hover">
-                            <tbody>
-                                <tr>
-                                    <td className="text-center">Nome</td>
-                                    <td className="text-center">Email</td>
-                                </tr>
-                                {this.state.listOrientador && this.state.listOrientador.length > 0 ? this.state.listOrientador.map(data => (
-                                    <tr key={this.state.listOrientador.id}>
-                                        <td className="text-center">{data.nomeCompleto}</td>
-                                        <td className="text-center">{data.email}</td>
-                                        <button className="btn btn-danger" onClick={() => this.beginDeletion(data)} >Deletar</button>
-                                        <button className="btn btn-warning" onClick={() => this.beginEdit(data)}>editar</button>
-                                    </tr>
-                                )) : <tr><td colSpan={4} className='text-center fw-bold'>Nenhum orientador encontrado</td></tr>}
-                            </tbody>
-                        </table>
+    <tbody>
+        <tr>
+            <td className="text-center">
+                Nome
+            </td>
+
+            <td className="text-center">
+                Email
+            </td>
+
+            <td className="text-center">
+                Ações
+            </td>
+        </tr>
+
+        {this.state.listOrientador &&
+        this.state.listOrientador.length > 0 ? (
+            this.state.listOrientador.map(data => (
+                <tr key={data.id}>
+                    <td className="text-center">
+                        {data.nomeCompleto}
+                    </td>
+
+                    <td className="text-center">
+                        {data.email}
+                    </td>
+
+                    <td className="text-center">
+                        <button
+                            className="btn btn-danger me-2"
+                            onClick={() => this.beginDeletion(data)}
+                        >
+                            Deletar
+                        </button>
+
+                        <button
+                            className="btn btn-warning"
+                            onClick={() => this.beginEdit(data)}
+                        >
+                            Editar
+                        </button>
+                    </td>
+                </tr>
+            ))
+        ) : (
+            <tr>
+                <td
+                    colSpan={3}
+                    className="text-center fw-bold"
+                >
+                    Nenhum orientador encontrado
+                </td>
+            </tr>
+        )}
+    </tbody>
+</table>
                     </div>
 
                     {/* Modal de exclusão */}

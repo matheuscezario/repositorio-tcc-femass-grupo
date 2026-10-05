@@ -1,0 +1,10 @@
+package com.example.repositorioDeTcc.model;
+
+public enum StatusTCC {
+    AGUARDANDO_ORIENTADOR,
+    AGUARDANDO_COORDENADOR,
+    PROPOSTA_APROVADA,
+    EM_DESENVOLVIMENTO,
+    ATIVIDADES_CONCLUIDAS,
+    TCC_PUBLICADO
+}

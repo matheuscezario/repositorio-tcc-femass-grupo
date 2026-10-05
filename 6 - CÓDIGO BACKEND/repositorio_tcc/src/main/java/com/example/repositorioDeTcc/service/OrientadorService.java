@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.logging.Logger;
+import java.security.Principal;
 
 @Service
 public class OrientadorService {
@@ -31,6 +32,14 @@ public class OrientadorService {
         OrientadorDTO dto = new OrientadorDTO(obj.orElseThrow(() -> new ResourceNotFoundException(id)));
         return dto;
     }
+
+    @Transactional(readOnly = true)
+public OrientadorDTO findByEmail(String email) {
+    Orientador orientador = repository.findByEmail(email)
+            .orElseThrow(() -> new RuntimeException("Orientador não encontrado"));
+
+    return new OrientadorDTO(orientador);
+}
 
     @Transactional(readOnly = true)
     public List<OrientadorMinDTO> findAll(){

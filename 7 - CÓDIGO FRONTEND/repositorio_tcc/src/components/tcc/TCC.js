@@ -151,20 +151,29 @@ class TCC extends Component {
     };
 
     fillList = () => {
-        this.tccService.listAll()
-            .then((response) => this.setState({tccs: response.data, filteredItems: response.data}))
-            .catch((error) => {
-                toast.error('Erro ao carregar os dados', {
-                    position: "top-right",
-                    autoClose: 2000,
-                    hideProgressBar: false,
-                    closeOnClick: true,
-                    pauseOnHover: true,
-                    draggable: true,
-                    progress: undefined,
-                  });
+    this.tccService.listAll()
+        .then((response) => {
+            const tccsPublicados = response.data.filter(
+                tcc => tcc.status === 'TCC_PUBLICADO'
+            );
+
+            this.setState({
+                tccs: tccsPublicados,
+                filteredItems: tccsPublicados
             });
-    }
+        })
+        .catch((error) => {
+            toast.error('Erro ao carregar os dados', {
+                position: "top-right",
+                autoClose: 2000,
+                hideProgressBar: false,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+                progress: undefined,
+            });
+        });
+}
 
     backToHome = () => {
         this.props.navigate('/home');
@@ -520,19 +529,21 @@ class TCC extends Component {
                 </div>
 
                 <div className="row align-items-center mb-4">
-                    <div className="col-auto">
-                        <motion.button 
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            className="btn btn-primary btn-lg d-flex align-items-center new-tcc-button styled-button"
-                            data-bs-toggle="modal" 
-                            data-bs-target="#insertionModal" 
-                            onClick={this.beginInsertion}
-                        >
-                            <i className="bi bi-file-earmark-plus fs-4 me-2"></i>
-                            <span>Novo TCC</span>
-                        </motion.button>
-                    </div>
+                    {/* 
+<div className="col-auto">
+    <motion.button 
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+        className="btn btn-primary btn-lg d-flex align-items-center new-tcc-button styled-button"
+        data-bs-toggle="modal" 
+        data-bs-target="#insertionModal" 
+        onClick={this.beginInsertion}
+    >
+        <i className="bi bi-file-earmark-plus fs-4 me-2"></i>
+        <span>Novo TCC</span>
+    </motion.button>
+</div>
+*/}
                     <div className="col-auto">
                         <motion.button 
                             whileHover={{ scale: 1.05 }}

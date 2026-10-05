@@ -6,6 +6,10 @@ export class OrientadorService extends BaseService {
         super("/orientadores");
     }
 
+    findMine(){
+    return axiosInstance.get(`${this.url}/my`);
+}
+
     importFromFile(file){
         return axiosInstance.post(`${this.url}/import`, file, {
             headers: {

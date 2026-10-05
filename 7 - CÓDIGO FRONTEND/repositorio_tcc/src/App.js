@@ -11,6 +11,7 @@ import { PasswordModalProvider } from './components/passwordChange/PasswordModal
 import PasswordChangeModal from './components/passwordChange/PasswordChangeModal'; // O modal global
 import ChangePassword from './HOC/ChangePassword.js';
 import Orientador from './components/orientador/Orientador.js';
+import Coordenador from './components/coordenador/Coordenador.js';
 import Users from './components/users/Users.js';
 import ResetPassword from './components/resetPassword/ResetPassword.js';
 import { useLocation } from 'react-router-dom';
@@ -21,6 +22,7 @@ import FirstAccess from './components/firstAccess/FirstAccess.js';
 import PalavraChave from './components/palavraChave/PalavraChave.js';
 import Atividade from './components/atividade/Atividade.js';
 import Turma from './components/turma/Turma.js';
+import SolicitacaoTcc from './components/solicitacaoTcc/SolicitacaoTcc.js';
 
 class App extends React.Component{
   
@@ -36,6 +38,12 @@ class App extends React.Component{
     const ProtectedOrientador = (props) => (
       <ProtectedRoute component={() => <ChangePassword component={Orientador} {...props} />} />
     );
+    const ProtectedCoordenador = (props) => (
+    <ProtectedRoute component={() => <ChangePassword component={Coordenador} {...props} />} />
+);
+const ProtectedSolicitacaoTcc = (props) => (
+    <ProtectedRoute component={() => <ChangePassword component={SolicitacaoTcc} {...props} />} />
+);
     const ProtectedTCC = (props) => (
       <ProtectedRoute component={() => <ChangePassword component={TCC} {...props} />} />
     );
@@ -74,6 +82,8 @@ class App extends React.Component{
             <Route exact path="/home" element={<ProtectedHome />}></Route>
             <Route exact path="/alunos" element={<ProtectedAluno />}></Route>
             <Route exact path="/orientadores" element={<ProtectedOrientador />}></Route>
+            <Route exact path="/coordenadores" element={<ProtectedCoordenador />}></Route>
+            <Route exact path="/solicitacoes-tcc" element={<ProtectedSolicitacaoTcc />}></Route>
             <Route exact path="/tcc" element={<ProtectedTCC />}></Route>
             <Route exact path="/meu-tcc" element={<ProtectedMeuTCC />}></Route>
             <Route exact path="/categorias" element={<ProtectedCategoria />}></Route>

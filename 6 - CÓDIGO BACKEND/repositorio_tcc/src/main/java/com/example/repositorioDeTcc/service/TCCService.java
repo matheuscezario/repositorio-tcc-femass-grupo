@@ -10,6 +10,8 @@ import com.example.repositorioDeTcc.exception.handler.RequiredObjectIsNullExcept
 import com.example.repositorioDeTcc.mapper.TCCMapper;
 import com.example.repositorioDeTcc.model.PalavraChave;
 import com.example.repositorioDeTcc.model.Subcategoria;
+import com.example.repositorioDeTcc.model.StatusTCC;
+import com.example.repositorioDeTcc.model.Aluno;
 import com.example.repositorioDeTcc.model.TCC;
 import com.example.repositorioDeTcc.model.User;
 import com.example.repositorioDeTcc.repository.AlunoRepository;
@@ -119,6 +121,29 @@ public class TCCService {
         return tccMapper.toTCCDTO(savedTcc);
     }
 
+    @Transactional
+public TCCDTO criarProposta(TCCDTO tccDTO, Principal connectedUser) {
+    if (tccDTO == null) {
+        throw new RequiredObjectIsNullException();
+    }
+
+    User user = (User) ((UsernamePasswordAuthenticationToken) connectedUser).getPrincipal();
+
+    String matricula = user.getMatricula();
+
+    if (matricula == null) {
+        throw new MatriculaNotFoundException();
+    }
+
+    Aluno aluno = alunoRepository.findByMatricula(matricula)
+            .orElseThrow(() -> new MatriculaNotFoundException());
+
+    tccDTO.setIdAluno(aluno.getId());
+    tccDTO.setStatus(StatusTCC.AGUARDANDO_ORIENTADOR);
+
+    return insert(tccDTO);
+}
+
     public void delete(UUID id){
         if(!repository.existsById(id)) throw new ResourceNotFoundException(id);
 
@@ -181,4 +206,37 @@ public class TCCService {
             }
         }
     }
+
+    @Transactional
+public TCCDTO aprovarPeloOrientador(UUID id) {
+    TCC tcc = repository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException(id));
+
+    if (tcc.getStatus() != StatusTCC.AGUARDANDO_ORIENTADOR) {
+        throw new IllegalStateException(
+                "A proposta não está aguardando aprovação do orientador."
+        );
+    }
+
+    tcc.setStatus(StatusTCC.AGUARDANDO_COORDENADOR);
+
+    return new TCCDTO(repository.save(tcc));
+    }
+
+        @Transactional
+    public TCCDTO aprovarPeloCoordenador(UUID id) {
+        TCC tcc = repository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(id));
+
+        if (tcc.getStatus() != StatusTCC.AGUARDANDO_COORDENADOR) {
+            throw new IllegalStateException(
+                    "A proposta não está aguardando aprovação do coordenador."
+            );
+        }
+
+        tcc.setStatus(StatusTCC.PROPOSTA_APROVADA);
+
+        return new TCCDTO(repository.save(tcc));
+    }
+
 }

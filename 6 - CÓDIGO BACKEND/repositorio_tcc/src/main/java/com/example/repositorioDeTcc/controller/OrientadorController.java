@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.security.Principal;
 import java.util.List;
 import java.util.UUID;
 
@@ -34,6 +35,12 @@ public class OrientadorController {
         List<OrientadorMinDTO> result = service.findAll();
         return ResponseEntity.ok().body(result);
     }
+
+    @GetMapping(value = "/my", produces = MediaType.APPLICATION_JSON_VALUE)
+public ResponseEntity<OrientadorDTO> findMine(Principal connectedUser) {
+    OrientadorDTO orientador = service.findByEmail(connectedUser.getName());
+    return ResponseEntity.ok().body(orientador);
+}
 
     @PostMapping(produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<OrientadorDTO> create(@RequestBody OrientadorDTO orientador){

@@ -9,7 +9,8 @@ import { motion } from 'framer-motion';
 import { TCCService } from '../../service/TCCService';
 import { CategoriaService } from '../../service/CategoriaService';
 import { SubcategoriaService } from '../../service/SubcategoriaService';
-
+import { OrientadorService } from '../../service/OrientadorService';
+import { CursoService } from '../../service/CursoService';
 
 //const defaultSelectOption = { value: '', label: 'Selecione...', isDisabled: true };
 
@@ -35,6 +36,8 @@ class MeuTCC extends Component {
     tccService = new TCCService();
     categoriaService = new CategoriaService();
     subcategoriaService = new SubcategoriaService();
+    orientadorService = new OrientadorService();
+    cursoService = new CursoService();
 
     handleChange = (event) => {
         this.setState({ changesMade: true });
@@ -74,6 +77,30 @@ class MeuTCC extends Component {
             });
     }
 
+    fillOptionsOrientadores = () => {
+    this.orientadorService.listAll()
+        .then((response) => {
+            const optionsOrientadores = response.data.map(orientador => ({
+                value: orientador.id,
+                label: orientador.nomeCompleto
+            }));
+
+            this.setState({ optionsOrientadores });
+        });
+}
+
+fillOptionsCursos = () => {
+    this.cursoService.listAll()
+        .then((response) => {
+            const optionsCursos = response.data.map(curso => ({
+                value: curso.id,
+                label: curso.nome
+            }));
+
+            this.setState({ optionsCursos });
+        });
+}
+
     fillOptionsSubcategorias = (categoria) => {
         this.subcategoriaService.findAllByCategoria(categoria)
             .then((response) => {
@@ -109,13 +136,18 @@ class MeuTCC extends Component {
             curso: '',
             aluno: '',
             orientador: '',
+            status: '',
             selectedCategoria: '',
             selectedSubcategoria: '',
             selectedKeywords: '',
             changesMade: false,
             optionsCategorias: [],
             optionsSubcategorias: [],
-            optionsKeywords: []
+            optionsKeywords: [],
+            optionsOrientadores: [],
+            selectedOrientador: '',
+            optionsCursos: [],
+            selectedCurso: '',
         });
     }
 
@@ -175,11 +207,54 @@ class MeuTCC extends Component {
         });
     }
 
+    submitPropostaForm = (event) => {
+    event.preventDefault();
+
+    let data = {
+        titulo: this.state.tituloTcc,
+        resumo: this.state.resumo,
+        idOrientador: this.state.selectedOrientador.value,
+        idCurso: this.state.selectedCurso.value
+    };
+
+    this.tccService.criarProposta(data)
+        .then(response => {
+            if (response.status !== 200) {
+                throw new Error('Erro na requisição: ' + response.status);
+            }
+
+            toast.success('Proposta enviada ao orientador!', {
+                position: "top-right",
+                autoClose: 2000,
+                hideProgressBar: false,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+                progress: undefined,
+            });
+
+            this.clearState();
+            this.getMyTcc();
+        })
+        .catch(error => {
+            toast.error('Erro ao enviar proposta', {
+                position: "top-right",
+                autoClose: 3000,
+                hideProgressBar: false,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+                progress: undefined,
+            });
+        });
+}
+
     getMyTcc = () => {
         //Método ainda não implementado no backend  
 
         this.tccService.getMyTcc()
             .then((response) => {
+                console.log('MEU TCC RECEBIDO:', response.data);
                 this.setState({
                     tccExistente: true,
                     tccOriginal: response.data,
@@ -188,6 +263,7 @@ class MeuTCC extends Component {
                     curso: response.data.nomeCurso,
                     aluno: response.data.nomeCompletoAluno,
                     orientador: response.data.nomeCompletoOrientador,
+                    status: response.data.status,
                     selectedCategoria: response.data.categoria,
                     selectedSubcategoria: response.data.subcategoria,
                     keywords: response.data.keywords
@@ -210,168 +286,114 @@ class MeuTCC extends Component {
     }
 
     componentDidMount() {
-        this.getMyTcc();
-        this.fillOptionsCategorias();
+    this.getMyTcc();
+    this.fillOptionsCategorias();
+    this.fillOptionsOrientadores();
+    this.fillOptionsCursos();
     }
 
     render() {
 
         let document = 'null';
 
-        if(this.state.tccExistente) {
-            document = <>
-                <div className="document-container">
-                    <form onSubmit={this.submitTCCForm}>
-                        <div className="mb-3 row">
-                            <div className='row mb-4'>
-                                <div className="col-12">
-                                    <label htmlFor="inputTitle" className="form-label fw-bold">Título</label>
-                                    <input type="text" id="inputTitle" className="form-control" name="tituloTcc" onChange={this.handleChange} value={this.state.tituloTcc} required/>
-                                </div>
-                            </div>
-                            <div className='row mb-4'>
-                                <div className="col-12">
-                                    <label htmlFor="inputOverview" className="form-label fw-bold">Resumo</label>
-                                    <textarea rows="5" id="inputOverview" className='form-control' style={{resize: "none"}} name="resumo" onChange={this.handleChange} value={this.state.resumo}></textarea>
-                                </div>
-                            </div>
-                            <div className='row mb-3'>
-                                <div className="col-12">
-                                    <label htmlFor="inputCourse" className="form-label fw-bold">Curso</label>
-                                    <input type="text" id="inputCourse" value={this.state.curso} disabled className='form-control' />
-                                </div>
-                            </div>
-                            <div className='row mb-3'>
-                                <div className="col-sm-12 col-md-6 mb-sm-3 mb-md-0">
-                                    <label htmlFor="inputStudent" className="form-label fw-bold">Autor</label>
-                                    <input type="text" id="inputStudent" value={this.state.aluno} className="form-control" disabled />
-                                </div>
-                                <div className="col-sm-12 col-md-6">
-                                    <label htmlFor="inputOrientador" className="form-label fw-bold">Orientador</label>
-                                    <input type="text" id="inputOrientador" value={this.state.orientador} className="form-control" disabled />
-                                </div>
-                            </div>
-                            <div className='row mb-3'>
-                                <div className="col-sm-12 col-md-6 mb-sm-3 mb-md-0">
-                                    <label htmlFor="selectCategoria" className="form-label fw-bold">Categoria</label>
-                                    <Select
-                                        className={`basic-single`}
-                                        classNamePrefix="select"
-                                        name="selectedCategoria"
-                                        id="selectCategoria"
-                                        options={this.state.optionsCategorias}
-                                        value={this.state.selectedCategoria}
-                                        onChange={(selectedOption, actionMeta) => this.handleChangeSelect(selectedOption, actionMeta.name)}
-                                        noOptionsMessage={() => 'Nenhuma opção encontrada'}
-                                        placeholder="Selecione..."
-                                    />
-                                </div>
-                                <div className="col-sm-12 col-md-6">
-                                    <label htmlFor="selectSubcategoria" className="form-label fw-bold">Subcategoria</label>
-                                    <Select
-                                        className={`basic-single`}
-                                        classNamePrefix="select"
-                                        name="selectedSubcategoria"
-                                        id="selectSubcategoria"
-                                        options={this.state.optionsSubcategorias}
-                                        value={this.state.selectedSubcategoria}
-                                        onChange={(selectedOption, actionMeta) => this.handleChangeSelect(selectedOption, actionMeta.name)}
-                                        isDisabled={!this.state.selectedCategoria}
-                                        noOptionsMessage={() => 'Nenhuma opção encontrada'}
-                                        placeholder={`${!this.state.selectedCategoria ? 'Selecione uma categoria...' : 'Selecione...'}`}
-                                    />
-                                </div>
-                            </div>
-                            <div className='row'>
-                                <div className="col-12">
-                                    <label htmlFor="selectKeywords" className="form-label fw-bold">Palavras-Chave</label>
-                                    <CreatableSelect
-                                        isMulti
-                                        className={`basic-single`}
-                                        classNamePrefix="select"
-                                        name="selectedKeywords"
-                                        id="selectKeywords"
-                                        options={this.state.optionsKeywords}
-                                        value={this.state.selectedKeywords}
-                                        onChange={(selectedOption, actionMeta) => this.handleChangeSelect(selectedOption, actionMeta.name)}
-                                        noOptionsMessage={() => 'Nenhuma opção encontrada'}
-                                        placeholder="Selecione..."
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                        {this.state.changesMade &&
-                            <div className="row mt-4 actions" >
-                                <div className="col-12 d-flex justify-content-end gap-3">
-                                    <Button 
-                                        variant="outline-secondary" 
-                                        onClick={this.revertFields} 
-                                        className='px-4'
-                                    >
-                                        <i className="bi bi-arrow-counterclockwise me-2"></i>
-                                        Reverter
-                                    </Button>
-                                    <Button 
-                                        variant="success" 
-                                        type='submit'
-                                        className='px-4'
-                                    >
-                                        Salvar
-                                    </Button>
-                                </div>
-                            </div>
-                        }
-                    </form>
+        if (
+    this.state.tccExistente &&
+    this.state.status === 'PROPOSTA_APROVADA'
+) {
+    document = <>
+        <div className="bg-white rounded shadow-sm col-12 col-md-8 col-lg-6 m-auto p-4">
+            <div className="text-center mb-4">
+                <i className="bi bi-check-circle-fill display-4 text-success"></i>
+                <h4 className="mt-3">Proposta de TCC aprovada</h4>
+            </div>
 
-                </div>
-            </>
-        } else {
-            document = <>
-                <div className="text-center p-5 bg-white rounded shadow-sm col-12 col-md-8 col-lg-6 m-auto">
-                    <div className="mb-4">
-                        <i className="bi bi-journal-text display-1 text-info"></i>
-                    </div>
-                    <h4 className="mb-3">Nenhum TCC Registrado</h4>
-                    <p className="text-muted mb-4">
-                        Parece que você ainda não possui um TCC registrado no sistema. 
-                        Para começar seu trabalho, entre em contato com o professor da disciplina 
-                        para realizar o cadastro do seu TCC.
-                    </p>
-                    <hr className="my-4"/>
-                    <div className="text-muted small">
-                        <i className="bi bi-info-circle me-2"></i>
-                        Dúvidas? Consulte a coordenação do seu curso para mais informações.
-                    </div>
-                </div>
-            </>
-        }
+            <div className="mb-3">
+                <strong>Título:</strong> {this.state.tituloTcc}
+            </div>
 
-        return (
-        <div className="tcc-page bg-light min-vh-100">
-            <Navbar />
-            <ToastContainer/>
-            
-            <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className='page-content container-fluid px-4'
-            >
-                <div className="row mb-4 mt-4">
-                    <div className="col-12">
-                        <h1 className='display-5 fw-bold mb-4 tittle tittleAfter'>Meu TCC</h1>
-                    </div>
-                </div>
-                {/* TODO: Remover o botão */}
-                {/* <button title={"Apenas para teste"} onClick={() => this.setState({tccExistente: !this.state.tccExistente})}></button> */}
+            <div className="mb-3">
+                <strong>Curso:</strong> {this.state.curso}
+            </div>
 
-                <div className='px-4'>
-                    {document}
-                </div>
-            </motion.div>
+            <div className="mb-3">
+                <strong>Autor:</strong> {this.state.aluno}
+            </div>
 
+            <div className="mb-3">
+                <strong>Orientador:</strong> {this.state.orientador}
+            </div>
+
+            <div className="mb-3">
+                <strong>Status:</strong>{' '}
+                <span className="text-success fw-bold">
+                    Proposta Aprovada
+                </span>
+            </div>
+
+            <div className="alert alert-success mt-4 mb-0">
+                Sua proposta foi aprovada pelo orientador e pelo coordenador.
+            </div>
         </div>
-        )
-  }
+    </>
+} else {
+    document = <>
+        <div className="bg-white rounded shadow-sm col-12 col-md-8 col-lg-6 m-auto p-4">
+            <div className="text-center mb-4">
+                <i className="bi bi-hourglass-split display-4 text-info"></i>
+                <h4 className="mt-3">Proposta de TCC enviada</h4>
+            </div>
+
+            <div className="mb-3">
+                <strong>Título:</strong> {this.state.tituloTcc}
+            </div>
+
+            <div className="mb-3">
+                <strong>Curso:</strong> {this.state.curso}
+            </div>
+
+            <div className="mb-3">
+                <strong>Orientador:</strong> {this.state.orientador}
+            </div>
+
+            <div className="mb-3">
+                <strong>Status:</strong>{' '}
+                {this.state.status === 'AGUARDANDO_ORIENTADOR'
+                    ? 'Aguardando aprovação do orientador'
+                    : 'Aguardando aprovação do coordenador'}
+            </div>
+
+            <div className="alert alert-info mt-4 mb-0">
+                Sua proposta foi enviada e está em processo de aprovação.
+            </div>
+        </div>
+    </>
+}
+
+return (
+    <div className="tcc-page bg-light min-vh-100">
+        <Navbar />
+        <ToastContainer/>
+
+        <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className='page-content container-fluid px-4'
+        >
+            <div className="row mb-4 mt-4">
+                <div className="col-12">
+                    <h1 className='display-5 fw-bold mb-4 tittle tittleAfter'>
+                        Meu TCC
+                    </h1>
+                </div>
+            </div>
+
+            <div className='px-4'>
+                {document}
+            </div>
+        </motion.div>
+    </div>
+)
+}
 }
 
 export default MeuTCC;

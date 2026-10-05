@@ -8,6 +8,7 @@ import { AtividadeService } from '../../service/AtividadeService';
 import { EntregaAtividadeService } from '../../service/EntregaAtividadeService';
 import { TurmaService } from '../../service/TurmaService';
 import { AlunoService } from '../../service/AlunoService';
+import { OrientadorService } from '../../service/OrientadorService';
 
 function withNavigate(Component) {
     return (props) => {
@@ -57,19 +58,37 @@ class Atividade extends Component {
     entregaService = new EntregaAtividadeService();
     turmaService = new TurmaService();
     alunoService = new AlunoService();
+    orientadorService = new OrientadorService();
 
     componentDidMount() {
-        const role = sessionStorage.getItem('role') || 'USER';
-        this.setState({ role });
+    const role = sessionStorage.getItem('role') || 'USER';
+    this.setState({ role });
 
-        if (role === 'MODERATOR' || role === 'ADMIN') {
-            this.turmaService.listAll()
-                .then(res => this.setState({ turmas: res.data }))
-                .catch(() => toast.error('Erro ao carregar turmas', { position: "top-right", autoClose: 2000 }));
-        } else {
-            this.loadMinhasAtividades();
-        }
+    if (role === 'MODERATOR' || role === 'ADMIN') {
+        this.turmaService.listAll()
+            .then(res => this.setState({ turmas: res.data }))
+            .catch(() => toast.error('Erro ao carregar turmas', {
+                position: "top-right",
+                autoClose: 2000
+            }));
+    } else {
+        this.orientadorService.findMine()
+            .then(() => {
+                this.setState({ isOrientador: true });
+
+                this.turmaService.listAll()
+                    .then(res => this.setState({ turmas: res.data }))
+                    .catch(() => toast.error('Erro ao carregar turmas', {
+                        position: "top-right",
+                        autoClose: 2000
+                    }));
+            })
+            .catch(() => {
+                this.setState({ isOrientador: false });
+                this.loadMinhasAtividades();
+            });
     }
+}
 
     loadMinhasAtividades = () => {
         this.atividadeService.findMine()
@@ -252,7 +271,10 @@ class Atividade extends Component {
 
     render() {
         const { role, itens, turmas, selectedTurmaId, alunosDaTurma } = this.state;
-        const isProfessor = role === 'MODERATOR' || role === 'ADMIN';
+        const isProfessor =
+    role === 'MODERATOR' ||
+    role === 'ADMIN' ||
+    this.state.isOrientador === true;
 
         // Para view professor: agrupa por atividade para identificar linhas únicas para ações de editar/excluir
         // A tabela é flat (cada linha = 1 aluno x 1 atividade)

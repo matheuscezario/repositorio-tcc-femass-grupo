@@ -3,6 +3,7 @@ package com.example.repositorioDeTcc.dto;
 import com.example.repositorioDeTcc.model.Aluno;
 import com.example.repositorioDeTcc.model.TCC;
 import com.example.repositorioDeTcc.model.Categoria;
+import com.example.repositorioDeTcc.model.StatusTCC;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -24,6 +25,7 @@ public class TCCMinDTO {
     private String nomeCompletoOrientador;
     private UUID idCurso;
     private UUID idSubcategoria;
+    private StatusTCC status;
     private List<PalavraChaveDTO> palavrasChave = new ArrayList<>();
 
     public TCCMinDTO(TCC entity){
@@ -34,6 +36,7 @@ public class TCCMinDTO {
         this.idOrientador = entity.getOrientador().getId();
         this.nomeCompletoOrientador = entity.getOrientador().getNomeCompleto();
         this.idCurso = entity.getCurso().getId();
+        this.status = entity.getStatus();
         // Verifica se a subcategoria é nula antes de acessar seus atributos
         if(entity.getSubcategoria() != null)
             this.idSubcategoria = entity.getSubcategoria().getId();

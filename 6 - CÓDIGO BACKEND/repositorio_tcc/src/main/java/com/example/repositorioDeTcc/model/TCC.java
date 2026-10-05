@@ -41,6 +41,10 @@ public class TCC implements Serializable {
 
     @Column
     private String resumo;
+    
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private StatusTCC status = StatusTCC.AGUARDANDO_ORIENTADOR;
 
     @ManyToMany(fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     @JoinTable(

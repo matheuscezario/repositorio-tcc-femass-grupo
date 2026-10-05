@@ -9,6 +9,8 @@ import com.example.repositorioDeTcc.repository.AlunoRepository;
 import com.example.repositorioDeTcc.repository.OrientadorRepository;
 import com.example.repositorioDeTcc.repository.ProfessorTCCRepository;
 import com.example.repositorioDeTcc.repository.UserRepository;
+import com.example.repositorioDeTcc.repository.CoordenadorRepository;
+import com.example.repositorioDeTcc.model.Coordenador;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -43,6 +45,8 @@ public class AuthService {
     AlunoRepository alunoRepository;
     @Autowired
     OrientadorRepository orientadorRepository;
+    @Autowired
+CoordenadorRepository coordenadorRepository;
 
     public ResponseEntity<?> login(LoginRequestDTO loginRequestDTO) {
 
@@ -158,10 +162,12 @@ public class AuthService {
 
         Optional<Aluno> alunoOpt = alunoRepository.findByMatricula(identificador);
         Optional<Orientador> orientadorOpt = orientadorRepository.findByCpf(identificador);
+        Optional<Coordenador> coordenadorOpt = coordenadorRepository.findByCpf(identificador);
 
         Optional<Pessoa> pessoaOpt = alunoOpt
-                .map(aluno -> (Pessoa) aluno)
-                .or(() -> orientadorOpt.map(orientador -> (Pessoa) orientador));
+        .map(aluno -> (Pessoa) aluno)
+        .or(() -> orientadorOpt.map(orientador -> (Pessoa) orientador))
+        .or(() -> coordenadorOpt.map(coordenador -> (Pessoa) coordenador));
 
         if (pessoaOpt.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -199,9 +205,12 @@ public class AuthService {
             pessoa.setUser(newUser);
 
             alunoOpt.ifPresentOrElse(
-                    aluno -> alunoRepository.save(aluno),
-                    () -> orientadorOpt.ifPresent(orientadorRepository::save)
-            );
+        aluno -> alunoRepository.save(aluno),
+        () -> orientadorOpt.ifPresentOrElse(
+                orientador -> orientadorRepository.save(orientador),
+                () -> coordenadorOpt.ifPresent(coordenadorRepository::save)
+        )
+);
 
             String token = tokenService.generateSingleToken(newUser);
 

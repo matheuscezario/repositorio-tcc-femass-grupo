@@ -11,4 +11,5 @@ import java.util.UUID;
 public interface OrientadorRepository extends JpaRepository<Orientador, UUID> {
     public List<Orientador> findAllByAtivoIsTrue();
     public Optional<Orientador> findByCpf(String cpf);
+    public Optional<Orientador> findByEmail(String email);
 }
