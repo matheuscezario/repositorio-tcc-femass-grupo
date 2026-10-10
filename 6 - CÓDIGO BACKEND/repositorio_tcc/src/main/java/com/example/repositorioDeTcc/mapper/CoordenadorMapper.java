@@ -1,27 +1,33 @@
+
 package com.example.repositorioDeTcc.mapper;
 
 import com.example.repositorioDeTcc.dto.CoordenadorDTO;
 import com.example.repositorioDeTcc.model.Coordenador;
-import org.modelmapper.ModelMapper;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.example.repositorioDeTcc.model.Curso;
 import org.springframework.stereotype.Component;
 
 @Component
 public class CoordenadorMapper {
 
-    @Autowired
-    private ModelMapper mapper;
-
-    public Coordenador fromCoordenadorDTOToCoordenador(CoordenadorDTO coordenadorDTO) {
-        return new Coordenador(
+    public Coordenador fromCoordenadorDTOToCoordenador(
+            CoordenadorDTO coordenadorDTO,
+            Curso curso
+    ) {
+        Coordenador coordenador = new Coordenador(
                 coordenadorDTO.getNomeCompleto(),
                 coordenadorDTO.getTelefone(),
                 coordenadorDTO.getEmail(),
                 coordenadorDTO.getCpf()
         );
+
+        coordenador.setCurso(curso);
+
+        return coordenador;
     }
 
-    public CoordenadorDTO toCoordenadorDTO(Coordenador coordenador) {
+    public CoordenadorDTO toCoordenadorDTO(
+            Coordenador coordenador
+    ) {
         return new CoordenadorDTO(coordenador);
     }
 }

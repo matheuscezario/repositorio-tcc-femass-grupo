@@ -11,6 +11,7 @@ import { PasswordModalProvider } from './components/passwordChange/PasswordModal
 import PasswordChangeModal from './components/passwordChange/PasswordChangeModal'; // O modal global
 import ChangePassword from './HOC/ChangePassword.js';
 import Orientador from './components/orientador/Orientador.js';
+import Professor from './components/professor/Professor.js';
 import Coordenador from './components/coordenador/Coordenador.js';
 import Users from './components/users/Users.js';
 import ResetPassword from './components/resetPassword/ResetPassword.js';
@@ -38,6 +39,9 @@ class App extends React.Component{
     const ProtectedOrientador = (props) => (
       <ProtectedRoute component={() => <ChangePassword component={Orientador} {...props} />} />
     );
+    const ProtectedProfessor = (props) => (
+    <ProtectedRoute component={() => <ChangePassword component={Professor} {...props} />} />
+);
     const ProtectedCoordenador = (props) => (
     <ProtectedRoute component={() => <ChangePassword component={Coordenador} {...props} />} />
 );
@@ -82,6 +86,7 @@ const ProtectedSolicitacaoTcc = (props) => (
             <Route exact path="/home" element={<ProtectedHome />}></Route>
             <Route exact path="/alunos" element={<ProtectedAluno />}></Route>
             <Route exact path="/orientadores" element={<ProtectedOrientador />}></Route>
+            <Route exact path="/professores" element={<ProtectedProfessor />}></Route>
             <Route exact path="/coordenadores" element={<ProtectedCoordenador />}></Route>
             <Route exact path="/solicitacoes-tcc" element={<ProtectedSolicitacaoTcc />}></Route>
             <Route exact path="/tcc" element={<ProtectedTCC />}></Route>

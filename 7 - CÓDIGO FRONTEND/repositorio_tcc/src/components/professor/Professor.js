@@ -5,33 +5,28 @@ import { Button, Modal } from 'react-bootstrap';
 import { ToastContainer, toast } from 'react-toastify';
 import DataTable from 'react-data-table-component';
 
-class Orientador extends Component {
+class Professor extends Component {
     state = {
-        listOrientador: [],
+        listProfessor: [],
         listCursos: [],
         filterText: '',
-
         nomeCompleto: '',
         cpf: '',
         telefone: '',
         email: '',
         cursosIds: [],
         atuaEmTodosCursos: false,
-
         toEditItem: null,
         toViewItem: null,
         toDeleteItem: null,
-
         showModalRegistration: false,
         showModalEdit: false,
         showModalView: false,
         showModalDeletion: false,
         showModalUpload: false,
-
         uploadFile: null,
         uploading: false,
-        saving: false,
-        deleting: false
+        saving: false
     };
 
     headers = () => ({
@@ -68,14 +63,14 @@ class Orientador extends Component {
 
     fillList = async () => {
         try {
-            const data = await this.request('/orientadores');
+            const data = await this.request('/professores');
 
             this.setState({
-                listOrientador: Array.isArray(data) ? data : []
+                listProfessor: Array.isArray(data) ? data : []
             });
         } catch (error) {
             console.error(error);
-            toast.error('Não foi possível carregar os orientadores.');
+            toast.error('Não foi possível carregar os professores.');
         }
     };
 
@@ -121,10 +116,10 @@ class Orientador extends Component {
             : {})
     });
 
-    beginEdit = async (orientador) => {
+    beginEdit = async (professor) => {
         try {
             const data = await this.request(
-                '/orientadores/' + orientador.id
+                '/professores/' + professor.id
             );
 
             this.setState({
@@ -143,10 +138,10 @@ class Orientador extends Component {
         }
     };
 
-    beginView = async (orientador) => {
+    beginView = async (professor) => {
         try {
             const data = await this.request(
-                '/orientadores/' + orientador.id
+                '/professores/' + professor.id
             );
 
             this.setState({
@@ -155,25 +150,19 @@ class Orientador extends Component {
             });
         } catch (error) {
             console.error(error);
-            toast.error('Não foi possível visualizar o orientador.');
+            toast.error('Não foi possível visualizar o professor.');
         }
     };
 
-    beginDeletion = (orientador) => this.setState({
-        toDeleteItem: orientador,
+    beginDeletion = (professor) => this.setState({
+        toDeleteItem: professor,
         showModalDeletion: true
     });
 
-    deleteOrientador = async () => {
-        const { toDeleteItem } = this.state;
-
-        if (!toDeleteItem) return;
-
-        this.setState({ deleting: true });
-
+    deleteProfessor = async () => {
         try {
             await this.request(
-                '/orientadores/' + toDeleteItem.id,
+                '/professores/' + this.state.toDeleteItem.id,
                 { method: 'DELETE' }
             );
 
@@ -182,17 +171,15 @@ class Orientador extends Component {
                 toDeleteItem: null
             });
 
-            toast.success('Orientador excluído!');
-            await this.fillList();
+            toast.success('Professor excluído!');
+            this.fillList();
         } catch (error) {
             console.error(error);
-            toast.error('Não foi possível excluir o orientador.');
-        } finally {
-            this.setState({ deleting: false });
+            toast.error('Não foi possível excluir o professor.');
         }
     };
 
-    saveOrientador = async (event) => {
+    saveProfessor = async (event) => {
         event.preventDefault();
 
         const {
@@ -223,7 +210,7 @@ class Orientador extends Component {
 
         try {
             await this.request(
-                '/orientadores' +
+                '/professores' +
                 (toEditItem ? '/' + toEditItem.id : ''),
                 {
                     method: toEditItem ? 'PUT' : 'POST',
@@ -242,20 +229,20 @@ class Orientador extends Component {
 
             toast.success(
                 toEditItem
-                    ? 'Orientador atualizado!'
-                    : 'Orientador criado!'
+                    ? 'Professor atualizado!'
+                    : 'Professor criado!'
             );
 
-            await this.fillList();
+            this.fillList();
         } catch (error) {
             console.error(error);
-            toast.error('Não foi possível salvar o orientador.');
+            toast.error('Não foi possível salvar o professor.');
         } finally {
             this.setState({ saving: false });
         }
     };
 
-    importarOrientadores = async (event) => {
+    importarProfessores = async (event) => {
         event.preventDefault();
 
         const {
@@ -292,7 +279,7 @@ class Orientador extends Component {
 
         try {
             const quantidade = await this.request(
-                '/orientadores/import',
+                '/professores/import',
                 {
                     method: 'POST',
                     body: formData
@@ -300,7 +287,7 @@ class Orientador extends Component {
             );
 
             toast.success(
-                `${quantidade} novo(s) orientador(es) importado(s)!`
+                `${quantidade} novo(s) professor(es) importado(s)!`
             );
 
             this.setState({
@@ -310,11 +297,11 @@ class Orientador extends Component {
                 atuaEmTodosCursos: false
             });
 
-            await this.fillList();
+            this.fillList();
         } catch (error) {
             console.error(error);
             toast.error(
-                'Erro ao importar orientadores. Confira as colunas e o arquivo.'
+                'Erro ao importar professores. Confira as colunas e o arquivo.'
             );
         } finally {
             this.setState({ uploading: false });
@@ -380,7 +367,7 @@ class Orientador extends Component {
     );
 
     renderForm = (mode) => (
-        <form onSubmit={this.saveOrientador}>
+        <form onSubmit={this.saveProfessor}>
             <Modal.Body>
                 <div className="mb-3">
                     <label className="form-label">
@@ -478,18 +465,18 @@ class Orientador extends Component {
 
     render() {
         const {
-            listOrientador,
+            listProfessor,
             filterText,
             toViewItem,
             toDeleteItem
         } = this.state;
 
-        const filteredData = listOrientador.filter(o =>
+        const filteredData = listProfessor.filter(p =>
             [
-                o.nomeCompleto,
-                o.cpf,
-                o.email,
-                o.telefone
+                p.nomeCompleto,
+                p.cpf,
+                p.email,
+                p.telefone
             ].some(value =>
                 String(value || '')
                     .toLowerCase()
@@ -500,25 +487,25 @@ class Orientador extends Component {
         const columns = [
             {
                 name: 'Nome',
-                selector: o => o.nomeCompleto,
+                selector: p => p.nomeCompleto,
                 sortable: true,
                 width: '40%'
             },
             {
                 name: 'E-mail',
-                selector: o => o.email,
+                selector: p => p.email,
                 sortable: true,
                 width: '40%'
             },
             {
                 name: 'Ações',
                 width: '20%',
-                cell: o => (
+                cell: p => (
                     <>
                         <button
                             className="btn btn-outline-secondary mx-1 px-1 py-0"
                             title="Visualizar"
-                            onClick={() => this.beginView(o)}
+                            onClick={() => this.beginView(p)}
                         >
                             <i className="bi bi-eye" />
                         </button>
@@ -526,7 +513,7 @@ class Orientador extends Component {
                         <button
                             className="btn btn-outline-secondary mx-1 px-1 py-0"
                             title="Editar"
-                            onClick={() => this.beginEdit(o)}
+                            onClick={() => this.beginEdit(p)}
                         >
                             <i className="bi bi-pencil" />
                         </button>
@@ -534,7 +521,7 @@ class Orientador extends Component {
                         <button
                             className="btn btn-outline-secondary mx-1 px-1 py-0"
                             title="Excluir"
-                            onClick={() => this.beginDeletion(o)}
+                            onClick={() => this.beginDeletion(p)}
                         >
                             <i className="bi bi-trash" />
                         </button>
@@ -554,16 +541,16 @@ class Orientador extends Component {
             }
         };
 
-        const cursosDescricao = orientador => {
-            if (!orientador) return '-';
+        const cursosDescricao = p => {
+            if (!p) return '-';
 
-            if (orientador.atuaEmTodosCursos) {
+            if (p.atuaEmTodosCursos) {
                 return 'Todos os cursos';
             }
 
-            const nomes = (orientador.cursosIds || []).map(id =>
+            const nomes = (p.cursosIds || []).map(id =>
                 this.state.listCursos.find(
-                    curso => curso.id === id
+                    c => c.id === id
                 )?.nome || id
             );
 
@@ -578,7 +565,7 @@ class Orientador extends Component {
                 <div className="page-content">
                     <div className="col-12 mb-4 mt-4">
                         <h1 className="display-5 fw-bold mb-4 tittle tittleAfter">
-                            Orientadores
+                            Professores
                         </h1>
                     </div>
 
@@ -621,7 +608,7 @@ class Orientador extends Component {
                                     customStyles={tableStyle}
                                     responsive
                                     fixedHeader
-                                    noDataComponent="Nenhum orientador encontrado"
+                                    noDataComponent="Nenhum professor encontrado"
                                     subHeader
                                     subHeaderComponent={
                                         <div className="form-group">
@@ -652,7 +639,7 @@ class Orientador extends Component {
                         className="bg-dark text-white"
                         closeVariant="white"
                     >
-                        <Modal.Title>Novo Orientador</Modal.Title>
+                        <Modal.Title>Novo Professor</Modal.Title>
                     </Modal.Header>
 
                     {this.renderForm('Registration')}
@@ -668,7 +655,7 @@ class Orientador extends Component {
                         className="bg-dark text-white"
                         closeVariant="white"
                     >
-                        <Modal.Title>Editar Orientador</Modal.Title>
+                        <Modal.Title>Editar Professor</Modal.Title>
                     </Modal.Header>
 
                     {this.renderForm('Edit')}
@@ -684,7 +671,7 @@ class Orientador extends Component {
                         className="bg-dark text-white"
                         closeVariant="white"
                     >
-                        <Modal.Title>Orientador</Modal.Title>
+                        <Modal.Title>Professor</Modal.Title>
                     </Modal.Header>
 
                     <Modal.Body>
@@ -742,14 +729,13 @@ class Orientador extends Component {
                     </Modal.Header>
 
                     <Modal.Body>
-                        Tem certeza que deseja excluir o orientador{' '}
+                        Tem certeza que deseja excluir o professor{' '}
                         <strong>{toDeleteItem?.nomeCompleto}</strong>?
                     </Modal.Body>
 
                     <Modal.Footer>
                         <Button
                             variant="secondary"
-                            disabled={this.state.deleting}
                             onClick={() => this.closeModal('Deletion')}
                         >
                             Cancelar
@@ -757,12 +743,9 @@ class Orientador extends Component {
 
                         <Button
                             variant="primary"
-                            disabled={this.state.deleting}
-                            onClick={this.deleteOrientador}
+                            onClick={this.deleteProfessor}
                         >
-                            {this.state.deleting
-                                ? 'Excluindo...'
-                                : 'Confirmar'}
+                            Confirmar
                         </Button>
                     </Modal.Footer>
                 </Modal>
@@ -778,11 +761,11 @@ class Orientador extends Component {
                         closeVariant="white"
                     >
                         <Modal.Title>
-                            Importação de Orientadores
+                            Importação de Professores
                         </Modal.Title>
                     </Modal.Header>
 
-                    <form onSubmit={this.importarOrientadores}>
+                    <form onSubmit={this.importarProfessores}>
                         <Modal.Body>
                             {this.renderCursos('upload')}
 
@@ -794,7 +777,7 @@ class Orientador extends Component {
                                 <div>
                                     <input
                                         type="file"
-                                        id="upload-orientadores"
+                                        id="upload-professores"
                                         style={{ display: 'none' }}
                                         accept=".csv,.xls,.xlsx"
                                         required
@@ -804,7 +787,7 @@ class Orientador extends Component {
                                     />
 
                                     <label
-                                        htmlFor="upload-orientadores"
+                                        htmlFor="upload-professores"
                                         className="btn btn-outline-secondary"
                                     >
                                         Selecionar arquivo
@@ -856,4 +839,4 @@ class Orientador extends Component {
     }
 }
 
-export default Orientador;
+export default Professor;

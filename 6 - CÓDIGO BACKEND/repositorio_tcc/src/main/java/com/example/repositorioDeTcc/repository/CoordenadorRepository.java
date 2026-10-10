@@ -9,4 +9,6 @@ import java.util.UUID;
 public interface CoordenadorRepository extends JpaRepository<Coordenador, UUID> {
 
     Optional<Coordenador> findByCpf(String cpf);
+
+    boolean existsByCpfOrEmail(String cpf, String email);
 }

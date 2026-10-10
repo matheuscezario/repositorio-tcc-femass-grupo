@@ -43,11 +43,31 @@ export default class Navbar extends Component {
                     <Link to="/alunos" className={`nav-link ${this.state.currentPageLink === 'alunos' ? 'active' : ''}`}>Alunos</Link>
                   </li>
                   <li className="nav-item">
-                    <Link to="/orientadores" className={`nav-link ${this.state.currentPageLink === 'orientadores' ? 'active' : ''}`}>Orientadores</Link>
-                  </li>
-                  <li className="nav-item">
-                  <Link to="/coordenadores" className={`nav-link ${this.state.currentPageLink === 'coordenadores' ? 'active' : ''}`}>Coordenadores</Link>
-                  </li>
+  <Link
+    to="/orientadores"
+    className={`nav-link ${this.state.currentPageLink === 'orientadores' ? 'active' : ''}`}
+  >
+    Orientadores
+  </Link>
+</li>
+
+<li className="nav-item">
+  <Link
+    to="/professores"
+    className={`nav-link ${this.state.currentPageLink === 'professores' ? 'active' : ''}`}
+  >
+    Professores
+  </Link>
+</li>
+
+<li className="nav-item">
+  <Link
+    to="/coordenadores"
+    className={`nav-link ${this.state.currentPageLink === 'coordenadores' ? 'active' : ''}`}
+  >
+    Coordenadores
+  </Link>
+</li>
                   <li className="nav-item">
                     <Link to="/tcc" className={`nav-link ${this.state.currentPageLink === 'tcc' ? 'active' : ''}`}>Trabalhos de Conclusão</Link>
                   </li>

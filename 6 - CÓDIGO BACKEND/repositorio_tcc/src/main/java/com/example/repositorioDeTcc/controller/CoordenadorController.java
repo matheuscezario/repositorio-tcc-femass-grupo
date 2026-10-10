@@ -7,6 +7,8 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import org.springframework.web.multipart.MultipartFile;
+
 import java.util.List;
 import java.util.UUID;
 
@@ -59,4 +61,24 @@ public class CoordenadorController {
         service.delete(id);
         return ResponseEntity.noContent().build();
     }
+
+    
+
+@PostMapping(
+        value = "/import",
+        consumes = MediaType.MULTIPART_FORM_DATA_VALUE
+)
+public ResponseEntity<Integer> importCoordenadores(
+        @RequestParam("file") MultipartFile file,
+        @RequestParam("idCurso") UUID idCurso
+) {
+    int quantidade = service.importCoordenadores(
+            file,
+            idCurso
+    );
+
+    return ResponseEntity.ok(quantidade);
+}
+
+
 }
