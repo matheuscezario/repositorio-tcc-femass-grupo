@@ -16,6 +16,7 @@ import com.example.repositorioDeTcc.model.TCC;
 import com.example.repositorioDeTcc.model.User;
 import com.example.repositorioDeTcc.repository.AlunoRepository;
 import com.example.repositorioDeTcc.repository.CategoriaRepository;
+import com.example.repositorioDeTcc.repository.CoordenadorRepository;
 import com.example.repositorioDeTcc.repository.OrientadorRepository;
 import com.example.repositorioDeTcc.repository.PalavraChaveRepository;
 import com.example.repositorioDeTcc.repository.SubcategoriaRepository;
@@ -41,6 +42,9 @@ public class TCCService {
 
     @Autowired
     OrientadorRepository orientadorRepository;
+
+    @Autowired
+CoordenadorRepository coordenadorRepository;
     
     @Autowired
     SubcategoriaRepository subcategoriaRepository;
@@ -55,11 +59,61 @@ public class TCCService {
     PalavraChaveRepository palavraChaveRepository;
 
     @Transactional(readOnly = true)
-    public TCCDTO findById(UUID id){
-        Optional<TCC> obj = repository.findById(id);
-        TCCDTO dto = new TCCDTO(obj.orElseThrow(() -> new ResourceNotFoundException(id)));
-        return dto;
+public TCCDTO findById(UUID id) {
+
+    var authentication = org.springframework.security.core.context
+            .SecurityContextHolder.getContext().getAuthentication();
+
+    if (authentication == null
+            || !(authentication.getPrincipal() instanceof User usuario)) {
+        throw new org.springframework.security.access.AccessDeniedException(
+                "Usuário não autenticado."
+        );
     }
+
+    TCC tcc = repository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException(id));
+
+    boolean proprioAluno =
+            usuario.getMatricula() != null
+            && tcc.getAluno() != null
+            && usuario.getMatricula().equals(tcc.getAluno().getMatricula());
+
+    boolean orientadorResponsavel =
+            usuario.getEmail() != null
+            && tcc.getOrientador() != null
+            && tcc.getOrientador().getEmail() != null
+            && usuario.getEmail().equalsIgnoreCase(
+                    tcc.getOrientador().getEmail()
+            );
+
+    boolean coordenadorResponsavel = false;
+
+    if (usuario.getEmail() != null && tcc.getCurso() != null) {
+
+        var coordenador = coordenadorRepository.findByEmail(
+                usuario.getEmail()
+        );
+
+        coordenadorResponsavel =
+                coordenador.isPresent()
+                && coordenador.get().getCurso() != null
+                && coordenador.get().getCurso().getId().equals(
+                        tcc.getCurso().getId()
+                );
+    }
+
+    if (!proprioAluno
+            && !orientadorResponsavel
+            && !coordenadorResponsavel) {
+
+        throw new org.springframework.security.access.AccessDeniedException(
+                "Você não possui permissão para visualizar esta proposta."
+        );
+    }
+
+    return new TCCDTO(tcc);
+}
 
     @Transactional(readOnly = true)
     public List<TCCMinDTO> findAll(){
@@ -137,9 +191,40 @@ public TCCDTO criarProposta(TCCDTO tccDTO, Principal connectedUser) {
 
     Aluno aluno = alunoRepository.findByMatricula(matricula)
             .orElseThrow(() -> new MatriculaNotFoundException());
+    TCC tccExistente = repository.findByAlunoMatricula(matricula);
 
-    tccDTO.setIdAluno(aluno.getId());
+if (tccExistente != null) {
+    throw new IllegalStateException(
+        "Você já possui uma proposta de TCC cadastrada."
+    );
+}
+tccDTO.setIdAluno(aluno.getId());
     tccDTO.setStatus(StatusTCC.AGUARDANDO_ORIENTADOR);
+
+    if (tccDTO.getIdCurso() == null || tccDTO.getIdOrientador() == null) {
+    throw new IllegalArgumentException(
+        "Curso e orientador são obrigatórios."
+    );
+}
+
+var orientador = orientadorRepository
+        .findById(tccDTO.getIdOrientador())
+        .orElseThrow(() -> new ResourceNotFoundException(
+            tccDTO.getIdOrientador()
+        ));
+
+boolean orientadorPermitido =
+        orientador.isAtuaEmTodosCursos()
+        || orientador.getCursos().stream()
+            .anyMatch(curso ->
+                curso.getId().equals(tccDTO.getIdCurso())
+            );
+
+if (!orientadorPermitido) {
+    throw new IllegalArgumentException(
+        "O orientador selecionado não está vinculado ao curso informado."
+    );
+}
 
     return insert(tccDTO);
 }
@@ -207,8 +292,142 @@ public TCCDTO criarProposta(TCCDTO tccDTO, Principal connectedUser) {
         }
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
+public List<TCCMinDTO> findSolicitacoesPendentes() {
+
+    var authentication = org.springframework.security.core.context
+            .SecurityContextHolder.getContext().getAuthentication();
+
+    if (authentication == null
+            || !(authentication.getPrincipal() instanceof User usuario)) {
+        throw new org.springframework.security.access.AccessDeniedException(
+                "Usuário não autenticado."
+        );
+    }
+
+    String email = usuario.getEmail();
+
+    var orientador = orientadorRepository.findByEmail(email);
+    var coordenador = coordenadorRepository.findByEmail(email);
+
+    return repository.findAll().stream()
+            .filter(tcc -> {
+
+                boolean pendenteOrientador =
+                        orientador.isPresent()
+                        && tcc.getStatus() == StatusTCC.AGUARDANDO_ORIENTADOR
+                        && tcc.getOrientador() != null
+                        && orientador.get().getId().equals(
+                                tcc.getOrientador().getId()
+                        );
+
+                boolean pendenteCoordenador =
+                        coordenador.isPresent()
+                        && tcc.getStatus() == StatusTCC.AGUARDANDO_COORDENADOR
+                        && tcc.getCurso() != null
+                        && coordenador.get().getCurso() != null
+                        && coordenador.get().getCurso().getId().equals(
+                                tcc.getCurso().getId()
+                        );
+
+                return pendenteOrientador || pendenteCoordenador;
+            })
+            .map(TCCMinDTO::new)
+            .toList();
+}
+
+@Transactional(readOnly = true)
+public List<TCCMinDTO> findPropostasEmAcompanhamento() {
+
+    var authentication = org.springframework.security.core.context
+            .SecurityContextHolder.getContext().getAuthentication();
+
+    if (authentication == null
+            || !(authentication.getPrincipal() instanceof User usuario)) {
+        throw new org.springframework.security.access.AccessDeniedException(
+                "Usuário não autenticado."
+        );
+    }
+
+    var orientador = orientadorRepository.findByEmail(usuario.getEmail());
+
+    if (orientador.isEmpty()) {
+        return List.of();
+    }
+
+    return repository.findByOrientadorId(orientador.get().getId())
+            .stream()
+            .filter(tcc ->
+                    tcc.getStatus() == StatusTCC.AGUARDANDO_COORDENADOR
+            )
+            .map(TCCMinDTO::new)
+            .toList();
+}
+
+    @Transactional(readOnly = true)
+public List<TCCMinDTO> findPropostasAprovadas() {
+
+    var authentication = org.springframework.security.core.context
+            .SecurityContextHolder.getContext().getAuthentication();
+
+    if (authentication == null
+            || !(authentication.getPrincipal() instanceof User usuario)) {
+        throw new org.springframework.security.access.AccessDeniedException(
+                "Usuário não autenticado."
+        );
+    }
+
+    String email = usuario.getEmail();
+
+    var orientador = orientadorRepository.findByEmail(email);
+    var coordenador = coordenadorRepository.findByEmail(email);
+
+    if (orientador.isEmpty() && coordenador.isEmpty()) {
+        return List.of();
+    }
+
+    return repository.findAll()
+            .stream()
+            .filter(tcc -> {
+
+                if (tcc.getStatus() != StatusTCC.PROPOSTA_APROVADA) {
+                    return false;
+                }
+
+                boolean orientadorResponsavel =
+                        orientador.isPresent()
+                        && tcc.getOrientador() != null
+                        && orientador.get().getId().equals(
+                                tcc.getOrientador().getId()
+                        );
+
+                boolean coordenadorResponsavel =
+                        coordenador.isPresent()
+                        && coordenador.get().getCurso() != null
+                        && tcc.getCurso() != null
+                        && coordenador.get().getCurso().getId().equals(
+                                tcc.getCurso().getId()
+                        );
+
+                return orientadorResponsavel || coordenadorResponsavel;
+            })
+                        .map(TCCMinDTO::new)
+            .toList();
+}
+
+@Transactional
 public TCCDTO aprovarPeloOrientador(UUID id) {
+
+    var authentication = org.springframework.security.core.context
+            .SecurityContextHolder.getContext().getAuthentication();
+
+    if (authentication == null
+            || !(authentication.getPrincipal() instanceof User usuario)) {
+        throw new org.springframework.security.access.AccessDeniedException(
+                "Usuário não autenticado."
+        );
+    }
+
     TCC tcc = repository.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException(id));
 
@@ -218,13 +437,34 @@ public TCCDTO aprovarPeloOrientador(UUID id) {
         );
     }
 
-    tcc.setStatus(StatusTCC.AGUARDANDO_COORDENADOR);
+    if (tcc.getOrientador() == null
+            || tcc.getOrientador().getEmail() == null
+            || !tcc.getOrientador().getEmail()
+                    .equalsIgnoreCase(usuario.getEmail())) {
 
-    return new TCCDTO(repository.save(tcc));
+        throw new org.springframework.security.access.AccessDeniedException(
+                "Somente o orientador responsável pode aprovar esta proposta."
+        );
     }
 
-        @Transactional
-    public TCCDTO aprovarPeloCoordenador(UUID id) {
+        tcc.setStatus(StatusTCC.AGUARDANDO_COORDENADOR);
+
+    return new TCCDTO(repository.save(tcc));
+}
+
+@Transactional
+public TCCDTO aprovarPeloCoordenador(UUID id) {
+
+        var authentication = org.springframework.security.core.context
+                .SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null
+                || !(authentication.getPrincipal() instanceof User usuario)) {
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "Usuário não autenticado."
+            );
+        }
+
         TCC tcc = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(id));
 
@@ -234,9 +474,24 @@ public TCCDTO aprovarPeloOrientador(UUID id) {
             );
         }
 
+        var coordenador = coordenadorRepository.findByEmail(usuario.getEmail())
+                .orElseThrow(() ->
+                        new org.springframework.security.access.AccessDeniedException(
+                                "Usuário não é um coordenador cadastrado."
+                        )
+                );
+
+        if (coordenador.getCurso() == null
+                || tcc.getCurso() == null
+                || !coordenador.getCurso().getId().equals(tcc.getCurso().getId())) {
+
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "Somente o coordenador responsável pelo curso pode aprovar esta proposta."
+            );
+        }
+
         tcc.setStatus(StatusTCC.PROPOSTA_APROVADA);
 
         return new TCCDTO(repository.save(tcc));
     }
-
 }

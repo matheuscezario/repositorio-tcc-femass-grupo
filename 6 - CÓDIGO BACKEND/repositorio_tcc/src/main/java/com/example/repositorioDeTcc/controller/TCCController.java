@@ -32,6 +32,24 @@ public class TCCController {
         return ResponseEntity.ok().body(result);
     }
 
+    @GetMapping(value = "/solicitacoes-pendentes")
+public ResponseEntity<List<TCCMinDTO>> findSolicitacoesPendentes() {
+    List<TCCMinDTO> result = service.findSolicitacoesPendentes();
+    return ResponseEntity.ok().body(result);
+}
+
+@GetMapping(value = "/propostas-em-acompanhamento")
+public ResponseEntity<List<TCCMinDTO>> findPropostasEmAcompanhamento() {
+    List<TCCMinDTO> result = service.findPropostasEmAcompanhamento();
+    return ResponseEntity.ok().body(result);
+}
+
+@GetMapping(value = "/propostas-aprovadas")
+public ResponseEntity<List<TCCMinDTO>> findPropostasAprovadas() {
+    List<TCCMinDTO> result = service.findPropostasAprovadas();
+    return ResponseEntity.ok().body(result);
+}
+
     @GetMapping(value = "/my" , produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<TCCDTO> findMine(Principal connectedUser){
         TCCDTO result = service.findMine(connectedUser);

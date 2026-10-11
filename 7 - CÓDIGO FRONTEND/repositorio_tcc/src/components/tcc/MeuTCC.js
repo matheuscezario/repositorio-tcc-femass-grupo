@@ -45,10 +45,24 @@ class MeuTCC extends Component {
     };
 
     handleChangeSelect = (option, elementName) => {
-        this.setState({ changesMade: true });
-        if(elementName.startsWith('selectedCategoria')) this.fillOptionsSubcategorias(option.value);
-        this.setState({ [elementName]: option });
+    if (elementName === 'selectedCurso') {
+        this.setState({
+            selectedCurso: option,
+            selectedOrientador: null,
+            changesMade: true
+        });
+        return;
     }
+
+    if (elementName === 'selectedCategoria' && option) {
+        this.fillOptionsSubcategorias(option.value);
+    }
+
+    this.setState({
+        [elementName]: option,
+        changesMade: true
+    });
+}
 
     fillList = () => {
         this.tccService.listAll()
@@ -80,12 +94,21 @@ class MeuTCC extends Component {
     fillOptionsOrientadores = () => {
     this.orientadorService.listAll()
         .then((response) => {
-            const optionsOrientadores = response.data.map(orientador => ({
+            const orientadores = response.data;
+
+            const optionsOrientadores = orientadores.map(orientador => ({
                 value: orientador.id,
-                label: orientador.nomeCompleto
+                label: orientador.nomeCompleto,
+                atuaEmTodosCursos: orientador.atuaEmTodosCursos,
+                cursosIds: orientador.cursosIds || []
             }));
 
-            this.setState({ optionsOrientadores });
+            this.setState({
+                optionsOrientadores
+            });
+        })
+        .catch((error) => {
+            console.error('Erro ao carregar orientadores:', error);
         });
 }
 
@@ -270,9 +293,10 @@ fillOptionsCursos = () => {
                 });
             })
             .catch((error) => {
-                if(error.response.status === 404) {
-                    return;
-                }
+    if (error.response?.status === 404) {
+        this.setState({ tccExistente: false });
+        return;
+    }
                 toast.error('Erro ao carregar os dados', {
                     position: "top-right",
                     autoClose: 2000,
@@ -296,8 +320,106 @@ fillOptionsCursos = () => {
 
         let document = 'null';
 
-        if (
-    this.state.tccExistente &&
+        if (!this.state.tccExistente) {
+    document = (
+        <div className="bg-white rounded shadow-sm col-12 col-md-8 col-lg-6 m-auto p-4">
+            <h4 className="fw-bold mb-3">Cadastrar proposta de TCC</h4>
+
+            <p className="text-muted">
+                Preencha os dados da sua proposta e escolha um professor orientador.
+            </p>
+            <form onSubmit={this.submitPropostaForm}>
+
+    <div className="mb-3">
+        <label className="form-label fw-bold">
+            Título do TCC
+        </label>
+        <input
+            type="text"
+            className="form-control"
+            name="tituloTcc"
+            value={this.state.tituloTcc}
+            onChange={this.handleChange}
+            placeholder="Digite o título da proposta"
+            required
+        />
+    </div>
+
+    <div className="mb-3">
+        <label className="form-label fw-bold">
+            Resumo
+        </label>
+        <textarea
+            className="form-control"
+            name="resumo"
+            value={this.state.resumo}
+            onChange={this.handleChange}
+            rows="4"
+            placeholder="Descreva brevemente sua proposta"
+            required
+        />
+    </div>
+
+    <div className="mb-3">
+        <label className="form-label fw-bold">
+            Curso
+        </label>
+        <Select
+            options={this.state.optionsCursos || []}
+            value={this.state.selectedCurso || null}
+            onChange={(option) =>
+                this.handleChangeSelect(option, 'selectedCurso')
+            }
+            placeholder="Selecione seu curso"
+            isClearable={false}
+            required
+        />
+    </div>
+
+    <div className="mb-3">
+        <label className="form-label fw-bold">
+            Professor orientador
+        </label>
+        <Select
+    options={(this.state.optionsOrientadores || []).filter(orientador =>
+        this.state.selectedCurso?.value &&
+        (
+            orientador.atuaEmTodosCursos ||
+            orientador.cursosIds.includes(this.state.selectedCurso.value)
+        )
+    )}
+    value={this.state.selectedOrientador || null}
+    onChange={(option) =>
+        this.handleChangeSelect(option, 'selectedOrientador')
+    }
+    placeholder={
+        this.state.selectedCurso
+            ? "Selecione um orientador"
+            : "Selecione primeiro o curso"
+    }
+    isDisabled={!this.state.selectedCurso}
+    isClearable={false}
+    required
+/>
+    </div>
+
+    <button
+        type="submit"
+        className="btn btn-primary w-100 mt-3"
+        disabled={
+            !this.state.tituloTcc.trim() ||
+            !this.state.resumo.trim() ||
+            !this.state.selectedCurso?.value ||
+            !this.state.selectedOrientador?.value
+        }
+    >
+        Enviar proposta de TCC
+    </button>
+
+</form>
+        </div>
+    );
+} else if (
     this.state.status === 'PROPOSTA_APROVADA'
 ) {
     document = <>

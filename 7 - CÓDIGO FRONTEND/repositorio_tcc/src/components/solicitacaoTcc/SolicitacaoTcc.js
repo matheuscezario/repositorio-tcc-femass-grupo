@@ -16,6 +16,7 @@ class SolicitacaoTcc extends Component {
 
     state = {
     solicitacoes: [],
+    propostasEmAcompanhamento: [],
     propostasAprovadas: []
 }
 
@@ -47,23 +48,73 @@ class SolicitacaoTcc extends Component {
     {
     name: 'Ações',
     cell: row => (
-        row.status === 'AGUARDANDO_ORIENTADOR' ? (
+        <div className="d-flex gap-2">
             <button
-                className="btn btn-success btn-sm"
-                onClick={() => this.aprovarOrientador(row.id)}
+                className="btn btn-outline-primary btn-sm"
+                onClick={() => {
+                    window.location.href = `/tcc/proposta/${row.id}`;
+                }}
             >
-                Aprovar
+                Visualizar
             </button>
-        ) : (
-    <button
-        className="btn btn-success btn-sm"
-        onClick={() => this.aprovarCoordenador(row.id)}
-    >
-        Aprovar
-    </button>
-)
+
+            {row.status === 'AGUARDANDO_ORIENTADOR' ? (
+                <button
+                    className="btn btn-success btn-sm"
+                    onClick={() => this.aprovarOrientador(row.id)}
+                >
+                    Aprovar
+                </button>
+            ) : row.status === 'AGUARDANDO_COORDENADOR' ? (
+                <button
+                    className="btn btn-success btn-sm"
+                    onClick={() => this.aprovarCoordenador(row.id)}
+                >
+                    Aprovar
+                </button>
+            ) : null}
+        </div>
     )
 }
+];
+
+columnsAcompanhamento = [
+    {
+        name: 'Título',
+        selector: row => row.titulo,
+        sortable: true
+    },
+    {
+        name: 'Aluno',
+        selector: row => row.nomeCompletoAluno,
+        sortable: true
+    },
+    {
+        name: 'Orientador',
+        selector: row => row.nomeCompletoOrientador,
+        sortable: true
+    },
+    {
+        name: 'Status',
+        cell: row => (
+            <span className="badge bg-warning text-dark">
+                Aguardando Coordenador
+            </span>
+        )
+    },
+    {
+        name: 'Ações',
+        cell: row => (
+            <button
+                className="btn btn-outline-primary btn-sm"
+                onClick={() => {
+                    window.location.href = `/tcc/proposta/${row.id}`;
+                }}
+            >
+                Visualizar
+            </button>
+        )
+    }
 ];
 
 columnsAprovadas = [
@@ -89,6 +140,19 @@ columnsAprovadas = [
                 Proposta Aprovada
             </span>
         )
+    },
+    {
+        name: 'Ações',
+        cell: row => (
+            <button
+                className="btn btn-outline-primary btn-sm"
+                onClick={() =>
+                    window.location.href = `/tcc/proposta/${row.id}`
+                }
+            >
+                Visualizar
+            </button>
+        )
     }
 ];
 
@@ -97,24 +161,30 @@ columnsAprovadas = [
 }
 
 carregarSolicitacoes = () => {
-    this.tccService.listAll()
-        .then((response) => {
-            const solicitacoes = response.data.filter(tcc =>
-                tcc.status === 'AGUARDANDO_ORIENTADOR' ||
-                tcc.status === 'AGUARDANDO_COORDENADOR'
-            );
+    Promise.all([
+        this.tccService.listarSolicitacoesPendentes(),
+        this.tccService.listarPropostasEmAcompanhamento(),
+        this.tccService.listarPropostasAprovadas()
+    ])
+        .then(([responsePendentes, responseAcompanhamento, responseAprovadas]) => {
 
-            const propostasAprovadas = response.data.filter(tcc =>
-                tcc.status === 'PROPOSTA_APROVADA'
-            );
+            const solicitacoes = responsePendentes.data;
+            const propostasEmAcompanhamento = responseAcompanhamento.data;
+            const propostasAprovadas = responseAprovadas.data;
 
             this.setState({
                 solicitacoes,
+                propostasEmAcompanhamento,
                 propostasAprovadas
             });
         })
-        .catch((error) => {
+        .catch(error => {
             console.error('Erro ao carregar solicitações:', error);
+
+            toast.error('Erro ao carregar solicitações.', {
+                position: 'top-right',
+                autoClose: 3000
+            });
         });
 }
 
@@ -189,6 +259,24 @@ aprovarCoordenador = (id) => {
             noDataComponent={
                 <div className="p-4 text-center text-muted">
                     Nenhuma solicitação de TCC pendente
+                </div>
+            }
+        />
+    </div>
+</div>
+
+<div className="card border-0 shadow-sm mb-4">
+    <div className="card-body">
+        <h4 className="fw-bold mb-3">
+            Aguardando Coordenador
+        </h4>
+
+        <DataTable
+            columns={this.columnsAcompanhamento}
+            data={this.state.propostasEmAcompanhamento}
+            noDataComponent={
+                <div className="p-4 text-center text-muted">
+                    Nenhuma proposta aguardando aprovação do coordenador
                 </div>
             }
         />

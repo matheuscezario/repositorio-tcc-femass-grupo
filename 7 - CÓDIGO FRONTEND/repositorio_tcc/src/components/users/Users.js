@@ -106,12 +106,12 @@ class Users extends Component {
         const token = sessionStorage.getItem('token');
 
         const requestOptions = {
-            method: 'GET',
-            headers: {
-                'Authorization': 'Bearer ' + token, // Adicione o token JWT
-                'Content-Type': 'application/json'
-            }
-        };
+    method: 'GET',
+    headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token
+    }
+};
 
         fetch(url,requestOptions)
             .then((response) => response.json())
@@ -173,12 +173,13 @@ class Users extends Component {
         };
 
         const requestOptions = {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(data)
-        };
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + sessionStorage.getItem('token')
+    },
+    body: JSON.stringify(data)
+};
 
         fetch(url, requestOptions)
         .then((response) => {

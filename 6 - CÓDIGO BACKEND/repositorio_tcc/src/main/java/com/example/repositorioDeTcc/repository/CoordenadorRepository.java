@@ -10,5 +10,7 @@ public interface CoordenadorRepository extends JpaRepository<Coordenador, UUID> 
 
     Optional<Coordenador> findByCpf(String cpf);
 
+    Optional<Coordenador> findByEmail(String email);
+
     boolean existsByCpfOrEmail(String cpf, String email);
 }

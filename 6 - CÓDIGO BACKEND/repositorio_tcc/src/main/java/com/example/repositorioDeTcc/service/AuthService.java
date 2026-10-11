@@ -44,9 +44,13 @@ public class AuthService {
     @Autowired
     AlunoRepository alunoRepository;
     @Autowired
-    OrientadorRepository orientadorRepository;
-    @Autowired
+OrientadorRepository orientadorRepository;
+
+@Autowired
 CoordenadorRepository coordenadorRepository;
+
+@Autowired
+ProfessorTCCRepository professorTCCRepository;
 
     public ResponseEntity<?> login(LoginRequestDTO loginRequestDTO) {
 
@@ -163,11 +167,13 @@ CoordenadorRepository coordenadorRepository;
         Optional<Aluno> alunoOpt = alunoRepository.findByMatricula(identificador);
         Optional<Orientador> orientadorOpt = orientadorRepository.findByCpf(identificador);
         Optional<Coordenador> coordenadorOpt = coordenadorRepository.findByCpf(identificador);
+        Optional<ProfessorTCC> professorOpt = professorTCCRepository.findByCpf(identificador);
 
         Optional<Pessoa> pessoaOpt = alunoOpt
-        .map(aluno -> (Pessoa) aluno)
-        .or(() -> orientadorOpt.map(orientador -> (Pessoa) orientador))
-        .or(() -> coordenadorOpt.map(coordenador -> (Pessoa) coordenador));
+    .map(aluno -> (Pessoa) aluno)
+    .or(() -> orientadorOpt.map(orientador -> (Pessoa) orientador))
+    .or(() -> coordenadorOpt.map(coordenador -> (Pessoa) coordenador))
+    .or(() -> professorOpt.map(professor -> (Pessoa) professor));
 
         if (pessoaOpt.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -205,11 +211,14 @@ CoordenadorRepository coordenadorRepository;
             pessoa.setUser(newUser);
 
             alunoOpt.ifPresentOrElse(
-        aluno -> alunoRepository.save(aluno),
-        () -> orientadorOpt.ifPresentOrElse(
-                orientador -> orientadorRepository.save(orientador),
-                () -> coordenadorOpt.ifPresent(coordenadorRepository::save)
+    aluno -> alunoRepository.save(aluno),
+    () -> orientadorOpt.ifPresentOrElse(
+        orientador -> orientadorRepository.save(orientador),
+        () -> coordenadorOpt.ifPresentOrElse(
+            coordenador -> coordenadorRepository.save(coordenador),
+            () -> professorOpt.ifPresent(professorTCCRepository::save)
         )
+    )
 );
 
             String token = tokenService.generateSingleToken(newUser);

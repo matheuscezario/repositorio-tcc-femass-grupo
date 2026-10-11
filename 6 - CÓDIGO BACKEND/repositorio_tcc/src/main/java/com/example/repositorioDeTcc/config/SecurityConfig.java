@@ -46,7 +46,6 @@ public class SecurityConfig {
                         authorize -> authorize
                                 .requestMatchers(
                                         "/auth/login",
-                                        "/auth/register",
                                         "/auth/sendPasswordReset",
                                         "/auth/reset-password/**",
                                         "/auth/first-access",
@@ -66,7 +65,8 @@ public class SecurityConfig {
                                         "/webjars/**",
                                         "/swagger-ui"
                                 ).permitAll()
-                                .anyRequest().authenticated()
+.requestMatchers("/auth/register").hasRole("ADMIN")
+.anyRequest().authenticated()
                 )
                 .cors(cors -> {})
                 .build();

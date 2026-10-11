@@ -24,6 +24,7 @@ import PalavraChave from './components/palavraChave/PalavraChave.js';
 import Atividade from './components/atividade/Atividade.js';
 import Turma from './components/turma/Turma.js';
 import SolicitacaoTcc from './components/solicitacaoTcc/SolicitacaoTcc.js';
+import DetalhesPropostaTcc from './components/detalhesPropostaTcc/DetalhesPropostaTcc.js';
 
 class App extends React.Component{
   
@@ -47,6 +48,16 @@ class App extends React.Component{
 );
 const ProtectedSolicitacaoTcc = (props) => (
     <ProtectedRoute component={() => <ChangePassword component={SolicitacaoTcc} {...props} />} />
+);
+const ProtectedDetalhesPropostaTcc = (props) => (
+    <ProtectedRoute
+        component={() => (
+            <ChangePassword
+                component={DetalhesPropostaTcc}
+                {...props}
+            />
+        )}
+    />
 );
     const ProtectedTCC = (props) => (
       <ProtectedRoute component={() => <ChangePassword component={TCC} {...props} />} />
@@ -89,6 +100,7 @@ const ProtectedSolicitacaoTcc = (props) => (
             <Route exact path="/professores" element={<ProtectedProfessor />}></Route>
             <Route exact path="/coordenadores" element={<ProtectedCoordenador />}></Route>
             <Route exact path="/solicitacoes-tcc" element={<ProtectedSolicitacaoTcc />}></Route>
+            <Route exact path="/tcc/proposta/:id" element={<ProtectedDetalhesPropostaTcc />}></Route>
             <Route exact path="/tcc" element={<ProtectedTCC />}></Route>
             <Route exact path="/meu-tcc" element={<ProtectedMeuTCC />}></Route>
             <Route exact path="/categorias" element={<ProtectedCategoria />}></Route>
