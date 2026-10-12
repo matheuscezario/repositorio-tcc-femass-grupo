@@ -35,11 +35,18 @@ public class AtividadeController {
     /**
      * View do professor: tabela flat de todos alunos × atividades de uma turma.
      */
-    @GetMapping(value = "/turma/{turmaId}")
-    public ResponseEntity<List<AtividadeProfessorDTO>> findByTurma(@PathVariable UUID turmaId) {
-        List<AtividadeProfessorDTO> result = service.findAllForProfessor(turmaId);
-        return ResponseEntity.ok().body(result);
-    }
+    
+@GetMapping(value = "/turma/{turmaId}")
+public ResponseEntity<List<AtividadeProfessorDTO>> findByTurma(
+        @PathVariable UUID turmaId,
+        Principal connectedUser
+) {
+    List<AtividadeProfessorDTO> result =
+            service.findAllForProfessor(turmaId, connectedUser);
+
+    return ResponseEntity.ok().body(result);
+}
+
 
     /**
      * View do aluno: apenas suas próprias atividades.
@@ -49,6 +56,18 @@ public class AtividadeController {
         List<EntregaAtividadeDTO> result = service.findMine(connectedUser);
         return ResponseEntity.ok().body(result);
     }
+
+    /**
+ * Atividades do aluno vinculado a uma proposta de TCC.
+ * A autorização será verificada pelo serviço.
+ */
+@GetMapping(value = "/tcc/{tccId}", produces = MediaType.APPLICATION_JSON_VALUE)
+public ResponseEntity<List<EntregaAtividadeDTO>> findByTcc(
+        @PathVariable UUID tccId
+) {
+    List<EntregaAtividadeDTO> result = service.findByTcc(tccId);
+    return ResponseEntity.ok().body(result);
+}
 
     @PostMapping(produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<AtividadeDTO> create(@Valid @RequestBody AtividadeCreateDTO dto) {

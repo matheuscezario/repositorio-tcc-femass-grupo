@@ -25,6 +25,8 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
     ports:
       - "8080:8080"
+    volumes:
+      - atividade-uploads:/app/uploads/atividades
     depends_on:
       postgres:
         condition: service_healthy
@@ -46,3 +48,4 @@ services:
 volumes:
   postgres-data:
   pgadmin_data:
+  atividade-uploads:

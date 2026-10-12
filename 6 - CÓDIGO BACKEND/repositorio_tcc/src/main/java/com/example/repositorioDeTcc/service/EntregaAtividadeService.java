@@ -17,6 +17,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.example.repositorioDeTcc.model.TCC;
+import com.example.repositorioDeTcc.model.User;
+import com.example.repositorioDeTcc.repository.TCCRepository;
+import com.example.repositorioDeTcc.repository.CoordenadorRepository;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.context.SecurityContextHolder;
+
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.nio.file.Files;
@@ -41,6 +48,12 @@ public class EntregaAtividadeService {
 
     @Autowired
     AlunoRepository alunoRepository;
+
+    @Autowired
+TCCRepository tccRepository;
+
+@Autowired
+CoordenadorRepository coordenadorRepository;
 
     @Transactional(readOnly = true)
     public EntregaAtividadeDTO findById(UUID id) {
@@ -88,22 +101,79 @@ public class EntregaAtividadeService {
     /**
      * Retorna o arquivo para download.
      */
-    public Resource downloadArquivo(UUID entregaId) throws MalformedURLException {
-        EntregaAtividade entrega = repository.findById(entregaId)
-                .orElseThrow(() -> new ResourceNotFoundException(entregaId));
+    @Transactional(readOnly = true)
+public Resource downloadArquivo(UUID entregaId) throws MalformedURLException {
 
-        if (entrega.getArquivoCaminho() == null) {
-            throw new RuntimeException("Nenhum arquivo associado a esta entrega");
-        }
+    EntregaAtividade entrega = repository.findById(entregaId)
+            .orElseThrow(() -> new ResourceNotFoundException(entregaId));
 
-        Path filePath = Paths.get(uploadDir).resolve(entrega.getArquivoCaminho()).normalize();
-        Resource resource = new UrlResource(filePath.toUri());
+    var authentication = SecurityContextHolder.getContext().getAuthentication();
 
-        if (!resource.exists()) {
-            throw new RuntimeException("Arquivo não encontrado no servidor");
-        }
-        return resource;
+    if (authentication == null ||
+            !(authentication.getPrincipal() instanceof User usuario)) {
+        throw new AccessDeniedException("Usuário não autenticado.");
     }
+
+    Aluno aluno = entrega.getAluno();
+
+    boolean proprioAluno = usuario.getMatricula() != null
+            && usuario.getMatricula().equals(aluno.getMatricula());
+
+    boolean orientadorResponsavel = false;
+    boolean coordenadorResponsavel = false;
+
+    // Procura a proposta de TCC vinculada ao aluno.
+    // Ajustaremos a consulta conforme os métodos existentes no repositório.
+    Optional<TCC> tccOpt = tccRepository.findByAlunoId(aluno.getId());
+
+    if (tccOpt.isPresent()) {
+        TCC tcc = tccOpt.get();
+
+        orientadorResponsavel = usuario.getEmail() != null
+                && tcc.getOrientador() != null
+                && tcc.getOrientador().getEmail() != null
+                && usuario.getEmail().equalsIgnoreCase(
+                        tcc.getOrientador().getEmail()
+                );
+
+        if (usuario.getEmail() != null && tcc.getCurso() != null) {
+            var coordenador = coordenadorRepository.findByEmail(
+                    usuario.getEmail()
+            );
+
+            coordenadorResponsavel = coordenador.isPresent()
+                    && coordenador.get().getCurso() != null
+                    && coordenador.get().getCurso().getId()
+                            .equals(tcc.getCurso().getId());
+        }
+    }
+
+    if (!proprioAluno && !orientadorResponsavel && !coordenadorResponsavel) {
+        throw new AccessDeniedException(
+                "Você não possui permissão para baixar este arquivo."
+        );
+    }
+
+    if (entrega.getArquivoCaminho() == null) {
+        throw new RuntimeException(
+                "Nenhum arquivo associado a esta entrega"
+        );
+    }
+
+    Path filePath = Paths.get(uploadDir)
+            .resolve(entrega.getArquivoCaminho())
+            .normalize();
+
+    Resource resource = new UrlResource(filePath.toUri());
+
+    if (!resource.exists()) {
+        throw new RuntimeException(
+                "Arquivo não encontrado no servidor"
+        );
+    }
+
+    return resource;
+}
 
     private String salvarArquivo(MultipartFile file, UUID atividadeId, UUID alunoId) throws IOException {
         String subDir = atividadeId.toString() + "/" + alunoId.toString();

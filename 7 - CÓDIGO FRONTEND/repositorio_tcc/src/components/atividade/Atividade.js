@@ -9,6 +9,7 @@ import { EntregaAtividadeService } from '../../service/EntregaAtividadeService';
 import { TurmaService } from '../../service/TurmaService';
 import { AlunoService } from '../../service/AlunoService';
 import { OrientadorService } from '../../service/OrientadorService';
+import { ProfessorTCCService } from '../../service/ProfessorTCCService';
 
 function withNavigate(Component) {
     return (props) => {
@@ -59,6 +60,7 @@ class Atividade extends Component {
     turmaService = new TurmaService();
     alunoService = new AlunoService();
     orientadorService = new OrientadorService();
+    professorService = new ProfessorTCCService();
 
     componentDidMount() {
     const role = sessionStorage.getItem('role') || 'USER';
@@ -84,9 +86,23 @@ class Atividade extends Component {
                     }));
             })
             .catch(() => {
-                this.setState({ isOrientador: false });
-                this.loadMinhasAtividades();
-            });
+    this.professorService.findMine()
+        .then(() => {
+            this.setState({ isOrientador: true });
+
+            this.turmaService.listAll()
+                .then(res => {
+                    this.setState({ turmas: res.data });
+                })
+                .catch(() => {
+                    toast.error('Erro ao carregar turmas');
+                });
+        })
+        .catch(() => {
+            this.setState({ isOrientador: false });
+            this.loadMinhasAtividades();
+        });
+});
     }
 }
 

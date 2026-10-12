@@ -3,6 +3,7 @@ package com.example.repositorioDeTcc.dto;
 
 import com.example.repositorioDeTcc.model.Curso;
 import com.example.repositorioDeTcc.model.ProfessorTCC;
+import com.example.repositorioDeTcc.model.Turma;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -26,7 +27,9 @@ public class ProfessorTCCDTO {
 
     private boolean atuaEmTodosCursos = false;
     private Set<UUID> cursosIds = new HashSet<>();
+    private Set<UUID> turmasIds = new HashSet<>();
 
+    
     public ProfessorTCCDTO(ProfessorTCC entity) {
         BeanUtils.copyProperties(entity, this);
 
@@ -35,6 +38,13 @@ public class ProfessorTCCDTO {
                 : entity.getCursos()
                     .stream()
                     .map(Curso::getId)
+                    .collect(Collectors.toSet());
+
+        this.turmasIds = entity.getTurmas() == null
+                ? new HashSet<>()
+                : entity.getTurmas()
+                    .stream()
+                    .map(Turma::getId)
                     .collect(Collectors.toSet());
     }
 }

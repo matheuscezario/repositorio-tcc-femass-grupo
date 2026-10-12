@@ -12,4 +12,5 @@ public interface ProfessorTCCRepository extends JpaRepository<ProfessorTCC, UUID
 
     Optional<ProfessorTCC> findByCpf(String cpf);
 
+    Optional<ProfessorTCC> findByEmail(String email);
 }

@@ -6,10 +6,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import java.security.Principal;
 
 import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 
+import org.springframework.security.access.prepost.PreAuthorize;
+import java.util.Set;
 
 import java.util.List;
 import java.util.UUID;
@@ -21,6 +24,31 @@ public class ProfessorTCCController {
 
     @Autowired
     ProfessorTCCService service;
+
+    
+    @PreAuthorize("hasRole('ADMIN')")
+    @PutMapping("/{id}/turmas")
+    public ResponseEntity<ProfessorTCCDTO> vincularTurmas(
+            @PathVariable UUID id,
+            @RequestBody Set<UUID> turmasIds
+    ) {
+        ProfessorTCCDTO professor = service.vincularTurmas(
+                id,
+                turmasIds
+        );
+
+        return ResponseEntity.ok(professor);
+    }
+
+
+    @GetMapping("/my")
+public ResponseEntity<ProfessorTCCDTO> findMine(Principal connectedUser) {
+    ProfessorTCCDTO professor = service.findByEmail(
+            connectedUser.getName()
+    );
+
+    return ResponseEntity.ok(professor);
+}
 
     @GetMapping(value = "/{id}")
     public ResponseEntity<ProfessorTCCDTO> findById(@PathVariable UUID id) {

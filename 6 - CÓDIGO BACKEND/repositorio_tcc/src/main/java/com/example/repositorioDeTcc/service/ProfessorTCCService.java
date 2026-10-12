@@ -11,13 +11,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.example.repositorioDeTcc.model.Curso;
+import com.example.repositorioDeTcc.model.Turma;
+import com.example.repositorioDeTcc.repository.CursoRepository;
+import com.example.repositorioDeTcc.repository.TurmaRepository;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
-
-import com.example.repositorioDeTcc.model.Curso;
-import com.example.repositorioDeTcc.repository.CursoRepository;
 import org.springframework.web.multipart.MultipartFile;
 
 import org.apache.poi.ss.usermodel.*;
@@ -41,9 +41,56 @@ public class ProfessorTCCService {
 @Autowired
 CursoRepository cursoRepository;
 
+@Autowired
+TurmaRepository turmaRepository;
 
     @Autowired
     ProfessorTCCMapper professorTCCMapper;
+
+    
+    @Transactional
+    public ProfessorTCCDTO vincularTurmas(
+            UUID professorId,
+            Set<UUID> turmasIds
+    ) {
+        ProfessorTCC professor = repository.findById(professorId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(professorId));
+
+        if (turmasIds == null) {
+            throw new IllegalArgumentException(
+                    "A lista de turmas não pode ser nula."
+            );
+        }
+
+        Set<Turma> turmas = new HashSet<>();
+
+        for (UUID turmaId : turmasIds) {
+            Turma turma = turmaRepository.findById(turmaId)
+                    .orElseThrow(() ->
+                            new ResourceNotFoundException(turmaId));
+
+            turmas.add(turma);
+        }
+
+        professor.getTurmas().clear();
+        professor.getTurmas().addAll(turmas);
+
+        return new ProfessorTCCDTO(repository.save(professor));
+    }
+
+
+    @Transactional(readOnly = true)
+public ProfessorTCCDTO findByEmail(String email) {
+    ProfessorTCC professor = repository.findByEmail(email)
+            .orElseThrow(() ->
+                    new org.springframework.web.server.ResponseStatusException(
+                            org.springframework.http.HttpStatus.NOT_FOUND,
+                            "Professor não encontrado"
+                    ));
+
+    return new ProfessorTCCDTO(professor);
+}
 
     @Transactional(readOnly = true)
     public ProfessorTCCDTO findById(UUID id) {

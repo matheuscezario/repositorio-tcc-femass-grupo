@@ -10,9 +10,13 @@ import com.example.repositorioDeTcc.repository.AlunoRepository;
 import com.example.repositorioDeTcc.repository.AtividadeRepository;
 import com.example.repositorioDeTcc.repository.EntregaAtividadeRepository;
 import com.example.repositorioDeTcc.repository.TurmaRepository;
+import com.example.repositorioDeTcc.repository.ProfessorTCCRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import com.example.repositorioDeTcc.service.TCCService;
 
 import java.security.Principal;
 import java.util.ArrayList;
@@ -36,6 +40,12 @@ public class AtividadeService {
     @Autowired
     EntregaAtividadeRepository entregaRepository;
 
+    @Autowired
+ProfessorTCCRepository professorRepository;
+
+@Autowired
+TCCService tccService;
+
     @Transactional(readOnly = true)
     public AtividadeDTO findById(UUID id) {
         Optional<Atividade> obj = atividadeRepository.findById(id);
@@ -54,7 +64,39 @@ public class AtividadeService {
      * com LEFT JOIN nas entregas (entrega pode ser null se aluno ainda não entregou).
      */
     @Transactional(readOnly = true)
-    public List<AtividadeProfessorDTO> findAllForProfessor(UUID turmaId) {
+    public List<AtividadeProfessorDTO> findAllForProfessor(
+        UUID turmaId,
+        Principal connectedUser
+) {
+
+    
+Authentication authentication =
+        SecurityContextHolder.getContext().getAuthentication();
+
+boolean isAdmin = authentication != null
+        && authentication.getAuthorities().stream()
+        .anyMatch(authority ->
+                authority.getAuthority().equals("ROLE_ADMIN")
+        );
+
+if (!isAdmin) {
+
+
+    var professor = professorRepository
+        .findByEmail(connectedUser.getName())
+        .orElseThrow(() -> new org.springframework.security.access.AccessDeniedException(
+                "Professor não encontrado para o usuário autenticado."
+        ));
+
+boolean turmaAutorizada = professor.getTurmas().stream()
+        .anyMatch(turma -> turma.getId().equals(turmaId));
+
+if (!turmaAutorizada) {
+    throw new org.springframework.security.access.AccessDeniedException(
+            "Você não tem permissão para acessar esta turma."
+    );
+}
+}
         if (!turmaRepository.existsById(turmaId)) throw new ResourceNotFoundException(turmaId);
 
         List<Atividade> atividades = atividadeRepository.findAllByTurmaId(turmaId);
@@ -86,6 +128,50 @@ public class AtividadeService {
         }
         return resultado;
     }
+
+    /**
+ * Retorna as atividades e entregas do aluno de uma proposta de TCC.
+ * Reutiliza a autorização existente em TCCService.findById().
+ */
+@Transactional(readOnly = true)
+public List<EntregaAtividadeDTO> findByTcc(UUID tccId) {
+
+    // Verifica se o usuário pode visualizar esta proposta.
+    TCCDTO tcc = tccService.findById(tccId);
+
+    UUID alunoId = tcc.getIdAluno();
+
+    Aluno aluno = alunoRepository.findById(alunoId)
+            .orElseThrow(() -> new ResourceNotFoundException(alunoId));
+
+    List<Atividade> atividades = aluno.getTurma() != null
+            ? atividadeRepository.findAllByTurmaId(aluno.getTurma().getId())
+            : new ArrayList<>();
+
+    return atividades.stream().map(atividade -> {
+
+        Optional<EntregaAtividade> entregaOpt =
+                entregaRepository.findByAtividadeIdAndAlunoId(
+                        atividade.getId(),
+                        aluno.getId()
+                );
+
+        if (entregaOpt.isPresent()) {
+            return new EntregaAtividadeDTO(entregaOpt.get());
+        }
+
+        EntregaAtividadeDTO dto = new EntregaAtividadeDTO();
+
+        dto.setIdAtividade(atividade.getId());
+        dto.setDescricaoAtividade(atividade.getDescricao());
+        dto.setDataEntrega(atividade.getDataEntrega());
+        dto.setIdAluno(aluno.getId());
+        dto.setNomeAluno(aluno.getNomeCompleto());
+
+        return dto;
+
+    }).collect(Collectors.toList());
+}
 
     /**
      * Retorna atividades do aluno logado com suas respectivas entregas.

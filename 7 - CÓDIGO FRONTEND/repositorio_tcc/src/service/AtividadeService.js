@@ -13,4 +13,8 @@ export class AtividadeService extends BaseService {
     findMine() {
         return axiosInstance.get(`${this.url}/my`);
     }
+
+    findByTcc(tccId) {
+        return axiosInstance.get(`${this.url}/tcc/${tccId}`);
+    }
 }

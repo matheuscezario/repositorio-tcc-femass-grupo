@@ -4,6 +4,7 @@ import com.example.repositorioDeTcc.model.TCC;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface TCCRepository extends JpaRepository<TCC, UUID> {
@@ -13,4 +14,6 @@ public interface TCCRepository extends JpaRepository<TCC, UUID> {
     List<TCC> findByOrientadorId(UUID orientadorId);
 
     List<TCC> findByCursoId(UUID cursoId);
+
+    Optional<TCC> findByAlunoId(UUID alunoId);
 }

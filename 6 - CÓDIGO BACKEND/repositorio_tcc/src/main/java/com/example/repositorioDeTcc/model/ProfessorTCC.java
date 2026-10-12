@@ -19,6 +19,8 @@ public class ProfessorTCC extends Pessoa {
     @Column(name = "atua_em_todos_cursos", nullable = false)
     private boolean atuaEmTodosCursos = false;
 
+    
+    // Cursos em que o professor pode atuar
     @ManyToMany
     @JoinTable(
         name = "professor_tcc_curso",
@@ -26,6 +28,15 @@ public class ProfessorTCC extends Pessoa {
         inverseJoinColumns = @JoinColumn(name = "curso_id")
     )
     private Set<Curso> cursos = new HashSet<>();
+
+    // Turmas vinculadas ao professor
+    @ManyToMany
+    @JoinTable(
+        name = "professor_tcc_turma",
+        joinColumns = @JoinColumn(name = "professor_id"),
+        inverseJoinColumns = @JoinColumn(name = "turma_id")
+    )
+    private Set<Turma> turmas = new HashSet<>();
 
     public ProfessorTCC(
             String nomeCompleto,
@@ -37,3 +48,4 @@ public class ProfessorTCC extends Pessoa {
         this.cpf = cpf;
     }
 }
+
