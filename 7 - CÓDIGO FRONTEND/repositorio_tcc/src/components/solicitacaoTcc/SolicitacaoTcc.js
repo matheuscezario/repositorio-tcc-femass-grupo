@@ -22,6 +22,36 @@ class SolicitacaoTcc extends Component {
 
     tccService = new TCCService();
 
+    carregarPerfis = () => {
+    try {
+        const perfis = JSON.parse(
+            sessionStorage.getItem('perfis') || '[]'
+        );
+
+        return Array.isArray(perfis) ? perfis : [];
+    } catch {
+        return [];
+    }
+};
+
+podeAprovarOrientador = (row) => {
+    const perfis = this.carregarPerfis();
+
+    return (
+        row.status === 'AGUARDANDO_ORIENTADOR' &&
+        perfis.includes('ORIENTADOR')
+    );
+};
+
+podeAprovarCoordenador = (row) => {
+    const perfis = this.carregarPerfis();
+
+    return (
+        row.status === 'AGUARDANDO_COORDENADOR' &&
+        perfis.includes('COORDENADOR')
+    );
+};
+
     columns = [
     {
         name: 'Título',
@@ -58,21 +88,21 @@ class SolicitacaoTcc extends Component {
                 Visualizar
             </button>
 
-            {row.status === 'AGUARDANDO_ORIENTADOR' ? (
-                <button
-                    className="btn btn-success btn-sm"
-                    onClick={() => this.aprovarOrientador(row.id)}
-                >
-                    Aprovar
-                </button>
-            ) : row.status === 'AGUARDANDO_COORDENADOR' ? (
-                <button
-                    className="btn btn-success btn-sm"
-                    onClick={() => this.aprovarCoordenador(row.id)}
-                >
-                    Aprovar
-                </button>
-            ) : null}
+            {this.podeAprovarOrientador(row) ? (
+    <button
+        className="btn btn-success btn-sm"
+        onClick={() => this.aprovarOrientador(row.id)}
+    >
+        Aprovar
+    </button>
+) : this.podeAprovarCoordenador(row) ? (
+    <button
+        className="btn btn-success btn-sm"
+        onClick={() => this.aprovarCoordenador(row.id)}
+    >
+        Aprovar
+    </button>
+) : null}
         </div>
     )
 }

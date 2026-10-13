@@ -25,6 +25,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.example.repositorioDeTcc.repository.ProfessorTCCRepository;
 
 import java.security.Principal;
 import java.util.HashSet;
@@ -38,10 +39,16 @@ import java.util.logging.Logger;
 public class TCCService {
 
     @Autowired
+private PerfilUsuarioService perfilUsuarioService;
+
+    @Autowired
     AlunoRepository alunoRepository;
 
     @Autowired
     OrientadorRepository orientadorRepository;
+
+    @Autowired
+private ProfessorTCCRepository professorRepository;
 
     @Autowired
 CoordenadorRepository coordenadorRepository;
@@ -63,13 +70,12 @@ public TCCDTO findById(UUID id) {
 
     var authentication = org.springframework.security.core.context
             .SecurityContextHolder.getContext().getAuthentication();
-
-    if (authentication == null
-            || !(authentication.getPrincipal() instanceof User usuario)) {
-        throw new org.springframework.security.access.AccessDeniedException(
-                "Usuário não autenticado."
-        );
-    }
+            if (authentication == null
+        || !(authentication.getPrincipal() instanceof User usuario)) {
+    throw new org.springframework.security.access.AccessDeniedException(
+            "Usuário não autenticado."
+    );
+}
 
     TCC tcc = repository.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException(id));
@@ -103,14 +109,17 @@ public TCCDTO findById(UUID id) {
                 );
     }
 
-    if (!proprioAluno
-            && !orientadorResponsavel
-            && !coordenadorResponsavel) {
+    boolean professorDaTurma = professorPodeVisualizarTcc(usuario, tcc);
 
-        throw new org.springframework.security.access.AccessDeniedException(
-                "Você não possui permissão para visualizar esta proposta."
-        );
-    }
+if (!proprioAluno
+        && !orientadorResponsavel
+        && !coordenadorResponsavel
+        && !professorDaTurma) {
+
+    throw new org.springframework.security.access.AccessDeniedException(
+            "Você não possui permissão para visualizar esta proposta."
+    );
+}
 
     return new TCCDTO(tcc);
 }
@@ -307,8 +316,13 @@ public List<TCCMinDTO> findSolicitacoesPendentes() {
 
     String email = usuario.getEmail();
 
-    var orientador = orientadorRepository.findByEmail(email);
-    var coordenador = coordenadorRepository.findByEmail(email);
+    var orientador = orientadorRepository.findByEmail(email)
+            .filter(o -> o.getUser() != null
+                    && usuario.getId().equals(o.getUser().getId()));
+
+    var coordenador = coordenadorRepository.findByEmail(email)
+            .filter(c -> c.getUser() != null
+                    && usuario.getId().equals(c.getUser().getId()));
 
     return repository.findAll().stream()
             .filter(tcc -> {
@@ -330,7 +344,14 @@ public List<TCCMinDTO> findSolicitacoesPendentes() {
                                 tcc.getCurso().getId()
                         );
 
-                return pendenteOrientador || pendenteCoordenador;
+                boolean pendenteProfessor =
+                        (tcc.getStatus() == StatusTCC.AGUARDANDO_ORIENTADOR
+                        || tcc.getStatus() == StatusTCC.AGUARDANDO_COORDENADOR)
+                        && professorPodeVisualizarTcc(usuario, tcc);
+
+                return pendenteOrientador
+                        || pendenteCoordenador
+                        || pendenteProfessor;
             })
             .map(TCCMinDTO::new)
             .toList();
@@ -349,17 +370,29 @@ public List<TCCMinDTO> findPropostasEmAcompanhamento() {
         );
     }
 
-    var orientador = orientadorRepository.findByEmail(usuario.getEmail());
+    var orientador = orientadorRepository.findByEmail(usuario.getEmail())
+            .filter(o -> o.getUser() != null
+                    && usuario.getId().equals(o.getUser().getId()));
 
-    if (orientador.isEmpty()) {
-        return List.of();
-    }
+    return repository.findAll().stream()
+            .filter(tcc -> {
 
-    return repository.findByOrientadorId(orientador.get().getId())
-            .stream()
-            .filter(tcc ->
-                    tcc.getStatus() == StatusTCC.AGUARDANDO_COORDENADOR
-            )
+                if (tcc.getStatus() != StatusTCC.AGUARDANDO_COORDENADOR) {
+                    return false;
+                }
+
+                boolean orientadorResponsavel =
+                        orientador.isPresent()
+                        && tcc.getOrientador() != null
+                        && orientador.get().getId().equals(
+                                tcc.getOrientador().getId()
+                        );
+
+                boolean professorDaTurma =
+                        professorPodeVisualizarTcc(usuario, tcc);
+
+                return orientadorResponsavel || professorDaTurma;
+            })
             .map(TCCMinDTO::new)
             .toList();
 }
@@ -379,15 +412,15 @@ public List<TCCMinDTO> findPropostasAprovadas() {
 
     String email = usuario.getEmail();
 
-    var orientador = orientadorRepository.findByEmail(email);
-    var coordenador = coordenadorRepository.findByEmail(email);
+    var orientador = orientadorRepository.findByEmail(email)
+            .filter(o -> o.getUser() != null
+                    && usuario.getId().equals(o.getUser().getId()));
 
-    if (orientador.isEmpty() && coordenador.isEmpty()) {
-        return List.of();
-    }
+    var coordenador = coordenadorRepository.findByEmail(email)
+            .filter(c -> c.getUser() != null
+                    && usuario.getId().equals(c.getUser().getId()));
 
-    return repository.findAll()
-            .stream()
+    return repository.findAll().stream()
             .filter(tcc -> {
 
                 if (tcc.getStatus() != StatusTCC.PROPOSTA_APROVADA) {
@@ -409,9 +442,14 @@ public List<TCCMinDTO> findPropostasAprovadas() {
                                 tcc.getCurso().getId()
                         );
 
-                return orientadorResponsavel || coordenadorResponsavel;
+                boolean professorDaTurma =
+                        professorPodeVisualizarTcc(usuario, tcc);
+
+                return orientadorResponsavel
+                        || coordenadorResponsavel
+                        || professorDaTurma;
             })
-                        .map(TCCMinDTO::new)
+            .map(TCCMinDTO::new)
             .toList();
 }
 
@@ -427,6 +465,12 @@ public TCCDTO aprovarPeloOrientador(UUID id) {
                 "Usuário não autenticado."
         );
     }
+
+    if (!perfilUsuarioService.buscarPerfis(usuario).contains("ORIENTADOR")) {
+    throw new org.springframework.security.access.AccessDeniedException(
+            "Somente usuários com perfil de orientador podem realizar esta aprovação."
+    );
+}
 
     TCC tcc = repository.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException(id));
@@ -481,6 +525,14 @@ public TCCDTO aprovarPeloCoordenador(UUID id) {
                         )
                 );
 
+                if (coordenador.getUser() == null
+        || !usuario.getId().equals(coordenador.getUser().getId())) {
+
+    throw new org.springframework.security.access.AccessDeniedException(
+            "O cadastro de coordenador não pertence ao usuário autenticado."
+    );
+}
+
         if (coordenador.getCurso() == null
                 || tcc.getCurso() == null
                 || !coordenador.getCurso().getId().equals(tcc.getCurso().getId())) {
@@ -494,4 +546,29 @@ public TCCDTO aprovarPeloCoordenador(UUID id) {
 
         return new TCCDTO(repository.save(tcc));
     }
+
+    private boolean professorPodeVisualizarTcc(User usuario, TCC tcc) {
+
+    if (usuario == null || usuario.getEmail() == null
+            || tcc.getAluno() == null
+            || tcc.getAluno().getTurma() == null) {
+        return false;
+    }
+
+    var professor = professorRepository.findByEmail(usuario.getEmail());
+
+if (professor.isEmpty()
+        || professor.get().getUser() == null
+        || !usuario.getId().equals(professor.get().getUser().getId())) {
+    return false;
+}
+
+    var turmaAluno = tcc.getAluno().getTurma();
+
+    return professor.get().getTurmas().stream()
+            .anyMatch(turma ->
+                    turma.getId().equals(turmaAluno.getId())
+            );
+}
+
 }

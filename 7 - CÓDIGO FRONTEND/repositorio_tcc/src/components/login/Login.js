@@ -106,10 +106,23 @@ class Login extends Component {
         data
       })))
       .then(response => {
-        if (response.ok && response.data.token) {
-          // Armazene o token em localStorage ou sessionStorage
-          sessionStorage.setItem('token', response.data.token);
-          if (response.data.role) { sessionStorage.setItem('role', response.data.role); }
+  if (response.ok && response.data.token) {
+
+    sessionStorage.setItem('token', response.data.token);
+
+    sessionStorage.setItem(
+  'nomeCompleto',
+  response.data.nomeCompleto || ''
+);
+
+    if (response.data.role) {
+      sessionStorage.setItem('role', response.data.role);
+    }
+
+    sessionStorage.setItem(
+      'perfis',
+      JSON.stringify(response.data.perfis || [])
+    );
           toast.success('Login realizado!', {
             position: "top-right",
             autoClose: 1000,

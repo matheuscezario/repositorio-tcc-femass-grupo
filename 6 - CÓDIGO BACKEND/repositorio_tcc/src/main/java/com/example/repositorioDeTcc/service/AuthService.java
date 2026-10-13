@@ -32,6 +32,8 @@ import java.util.UUID;
 @Service
 public class AuthService {
     @Autowired
+private PerfilUsuarioService perfilUsuarioService;
+    @Autowired
     UserRepository userRepository;
     @Autowired
     TokenService tokenService;
@@ -79,10 +81,28 @@ ProfessorTCCRepository professorTCCRepository;
             }
             var token = tokenService.generateToken(user);
 
-            if(user.getMustChangePassword()){
-                return ResponseEntity.ok(new LoginResponseMustChangeDTO(token, true, user.getRole().name()));
-            }
-            return ResponseEntity.ok(new LoginResponseDTO(token, user.getRole().name()));
+            var perfis = perfilUsuarioService.buscarPerfis(user);
+
+if (Boolean.TRUE.equals(user.getMustChangePassword())) {
+    return ResponseEntity.ok(
+        new LoginResponseMustChangeDTO(
+            token,
+            true,
+            user.getRole().name(),
+            perfis,
+            user.getNomeCompleto()
+        )
+    );
+}
+
+return ResponseEntity.ok(
+    new LoginResponseDTO(
+    token,
+    user.getRole().name(),
+    perfis,
+    user.getNomeCompleto()
+)
+);
 
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new LoginErroDTO("Authentication failed: " + e.getMessage()));
@@ -121,7 +141,14 @@ ProfessorTCCRepository professorTCCRepository;
         user.setMustChangePassword(false);
         userRepository.save(user);
         var token = tokenService.generateToken(user);
-        return ResponseEntity.ok(new LoginResponseDTO(token, user.getRole().name()));
+        return ResponseEntity.ok(
+    new LoginResponseDTO(
+        token,
+        user.getRole().name(),
+        perfilUsuarioService.buscarPerfis(user),
+        user.getNomeCompleto()
+    )
+);
 
     }
 
@@ -155,7 +182,14 @@ ProfessorTCCRepository professorTCCRepository;
             user.setMustChangePassword(false);
             userRepository.save(user);
             token = tokenService.generateToken(user);
-            return ResponseEntity.ok(new LoginResponseDTO(token, user.getRole().name()));
+            return ResponseEntity.ok(
+    new LoginResponseDTO(
+        token,
+        user.getRole().name(),
+        perfilUsuarioService.buscarPerfis(user),
+        user.getNomeCompleto()
+    )
+);
         }else {
             throw new IllegalStateException("User not found");
         }
