@@ -20,6 +20,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.*;
+import com.example.repositorioDeTcc.model.User;
 
 @Service
 public class AlunoService {
@@ -75,11 +76,23 @@ public class AlunoService {
         return alunoMapper.toAlunoDTO(repository.save(aluno));
     }
 
-    public void delete(UUID id){
-        if(!repository.existsById(id)) throw new ResourceNotFoundException(id);
+    @Transactional
+public void delete(UUID id) {
+    Aluno aluno = repository.findById(id)
+        .orElseThrow(() -> new ResourceNotFoundException(id));
 
-        repository.deleteById(id);
+    // Desativa o aluno sem excluir seus dados
+    aluno.setAtivo(false);
+
+    // Desativa também a conta de acesso vinculada
+    User usuario = aluno.getUser();
+
+    if (usuario != null) {
+        usuario.setEnabled(false);
     }
+
+    repository.save(aluno);
+}
 
     @Transactional
     public AlunoDTO update(UUID id, AlunoDTO obj){

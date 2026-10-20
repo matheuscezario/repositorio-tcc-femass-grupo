@@ -54,7 +54,7 @@ export default class Navbar extends Component {
     const { role, perfis } = this.state;
 
     if (role === 'ADMIN' || perfis.includes('ADMIN')) {
-      return true;
+      return item.path !== '/meu-tcc' && item.path !== '/categorias';
     }
 
     if (item.perfis.includes('TODOS')) {

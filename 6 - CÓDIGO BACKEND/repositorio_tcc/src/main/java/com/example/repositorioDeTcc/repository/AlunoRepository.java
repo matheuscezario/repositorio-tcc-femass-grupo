@@ -16,6 +16,6 @@ public interface AlunoRepository extends JpaRepository<Aluno, UUID> {
     public Optional<Aluno> findByMatricula(String matricula);
     public Optional<Aluno> findByEmail(String email);
 
-    @Query("SELECT a FROM Aluno a JOIN a.turma t WHERE t.id = :turmaId")
+    @Query("SELECT a FROM Aluno a JOIN a.turma t WHERE t.id = :turmaId AND a.ativo = true")
     List<Aluno> findAllByTurmaId(@Param("turmaId") UUID turmaId);
 }

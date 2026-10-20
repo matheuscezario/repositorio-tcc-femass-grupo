@@ -327,6 +327,12 @@ public List<TCCMinDTO> findSolicitacoesPendentes() {
     return repository.findAll().stream()
             .filter(tcc -> {
 
+                // Ignora propostas de alunos desativados.
+                if (tcc.getAluno() == null
+                        || !Boolean.TRUE.equals(tcc.getAluno().getAtivo())) {
+                    return false;
+                }
+
                 boolean pendenteOrientador =
                         orientador.isPresent()
                         && tcc.getStatus() == StatusTCC.AGUARDANDO_ORIENTADOR
@@ -377,6 +383,12 @@ public List<TCCMinDTO> findPropostasEmAcompanhamento() {
     return repository.findAll().stream()
             .filter(tcc -> {
 
+                // Ignora propostas de alunos desativados.
+                if (tcc.getAluno() == null
+                        || !Boolean.TRUE.equals(tcc.getAluno().getAtivo())) {
+                    return false;
+                }
+
                 if (tcc.getStatus() != StatusTCC.AGUARDANDO_COORDENADOR) {
                     return false;
                 }
@@ -422,6 +434,12 @@ public List<TCCMinDTO> findPropostasAprovadas() {
 
     return repository.findAll().stream()
             .filter(tcc -> {
+
+                // Ignora propostas de alunos desativados.
+                if (tcc.getAluno() == null
+                        || !Boolean.TRUE.equals(tcc.getAluno().getAtivo())) {
+                    return false;
+                }
 
                 if (tcc.getStatus() != StatusTCC.PROPOSTA_APROVADA) {
                     return false;

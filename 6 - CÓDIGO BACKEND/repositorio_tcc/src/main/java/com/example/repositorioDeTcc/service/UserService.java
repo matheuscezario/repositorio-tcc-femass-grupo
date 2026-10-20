@@ -41,18 +41,24 @@ public class UserService implements UserDetailsService {
         return dto;
     }
     
-    @Transactional(readOnly = true)
-    public List<UserForListDTO> findAll(){
-        List<User> list = userRepository.findAll().stream().map((detail) -> (User) detail).collect(Collectors.toList());
-        List<UserForListDTO> listDto = list.stream().map(user -> new UserForListDTO(user)).toList();
-        return listDto;
-    }
+    public List<UserForListDTO> findAll() {
+    return userRepository.findAll()
+        .stream()
+        .filter(user -> Boolean.TRUE.equals(user.getEnabled()))
+        .map(user -> new UserForListDTO(user))
+        .toList();
+}
 
-    public void delete(UUID id){
-        if(!userRepository.existsById(id)) throw new ResourceNotFoundException(id);
+    @Transactional
+public void delete(UUID id) {
+    User usuario = userRepository.findById(id)
+        .orElseThrow(() -> new ResourceNotFoundException(id));
 
-        userRepository.deleteById(id);
-    }
+    // Desativa a conta sem apagar os dados
+    usuario.setEnabled(false);
+
+    userRepository.save(usuario);
+}
 
     @Transactional
     public UserDTO update(UUID id, UserDTO obj){
