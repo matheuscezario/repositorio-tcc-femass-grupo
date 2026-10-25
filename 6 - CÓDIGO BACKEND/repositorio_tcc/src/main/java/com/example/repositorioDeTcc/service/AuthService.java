@@ -13,6 +13,7 @@ import com.example.repositorioDeTcc.repository.CoordenadorRepository;
 import com.example.repositorioDeTcc.model.Coordenador;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -31,6 +32,12 @@ import java.util.UUID;
 
 @Service
 public class AuthService {
+    @Value("${gestortcc.demo.enabled:false}")
+    private boolean demoEnabled;
+
+    @Value("${GESTORTCC_DEMO_PASSWORD:}")
+    private String demoPassword;
+
     @Autowired
 private PerfilUsuarioService perfilUsuarioService;
     @Autowired
@@ -113,16 +120,28 @@ return ResponseEntity.ok(
         if(userRepository.findByEmail(registerUserDTO.email()) != null) return ResponseEntity.badRequest().body(new LoginErroDTO("Email Already taken"));
         if(userRepository.findByMatricula(registerUserDTO.matricula()) !=null) return ResponseEntity.badRequest().body(new LoginErroDTO("Matricula already taken"));
 
-        String encryptedPassword = new BCryptPasswordEncoder().encode(UUID.randomUUID().toString());
-        String role = "USER";
+        if (demoEnabled && (demoPassword == null || demoPassword.isBlank())) {
+            throw new IllegalStateException("Senha de demonstracao nao configurada");
+        }
+
+        String encryptedPassword = passwordEncoder.encode(
+                demoEnabled ? demoPassword : UUID.randomUUID().toString()
+        );
+
         User newUser = new User(registerUserDTO);
         newUser.setPassword(encryptedPassword);
 
+        if (demoEnabled) {
+            newUser.setEnabled(true);
+            newUser.setMustChangePassword(false);
+        }
+
         User persistedUser = userRepository.save(newUser);
 
-        var token = tokenService.generateToken(persistedUser);
-
-        mailService.sendWelcomeEmail(registerUserDTO, token);
+        if (!demoEnabled) {
+            var token = tokenService.generateToken(persistedUser);
+            mailService.sendWelcomeEmail(registerUserDTO, token);
+        }
 
         return ResponseEntity.ok().build();
     }
@@ -211,7 +230,7 @@ return ResponseEntity.ok(
 
         if (pessoaOpt.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(new LoginErroDTO("Aluno não encontrado no sistema."));
+                    .body(new LoginErroDTO("Aluno nÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o encontrado no sistema."));
         }
 
         pessoaOpt.ifPresent(pessoa -> {
@@ -222,7 +241,10 @@ return ResponseEntity.ok(
             User user = pessoa.getUser();
 
             if (user != null) {
-                // Já tem conta mas ainda não definiu senha: reenviar e-mail
+                if (demoEnabled) {
+                    return;
+                }
+                // JÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ tem conta mas ainda nÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o definiu senha: reenviar e-mail
                 if (Boolean.TRUE.equals(user.getMustChangePassword())) {
                     String token = tokenService.generateSingleToken(user);
                     mailService.sendWelcomeEmail(
@@ -233,12 +255,18 @@ return ResponseEntity.ok(
                 return;
             }
 
-            String senhaAleatoria = UUID.randomUUID().toString();
+            if (demoEnabled && (demoPassword == null || demoPassword.isBlank())) {
+                throw new IllegalStateException("Senha de demonstracao nao configurada");
+            }
+
+            String senhaAleatoria = demoEnabled
+                    ? demoPassword
+                    : UUID.randomUUID().toString();
 
             User newUser = new User(nomeCompleto, matricula, email,
-                    new BCryptPasswordEncoder().encode(senhaAleatoria),
+                    passwordEncoder.encode(senhaAleatoria),
                     Role.USER);
-            newUser.setMustChangePassword(true);
+            newUser.setMustChangePassword(!demoEnabled);
 
             userRepository.save(newUser);
 
@@ -254,13 +282,13 @@ return ResponseEntity.ok(
         )
     )
 );
-
-            String token = tokenService.generateSingleToken(newUser);
-
-            mailService.sendWelcomeEmail(
+            if (!demoEnabled) {
+                String token = tokenService.generateSingleToken(newUser);
+                mailService.sendWelcomeEmail(
                     new RegisterUserDTO(nomeCompleto, email, matricula, Role.USER, true),
                     token
             );
+            }
         });
 
         return ResponseEntity.ok().build();

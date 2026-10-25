@@ -47,6 +47,9 @@ TurmaRepository turmaRepository;
     @Autowired
     ProfessorTCCMapper professorTCCMapper;
 
+    @Autowired
+    DemoUserProvisioningService demoUserProvisioningService;
+
     
     @Transactional
     public ProfessorTCCDTO vincularTurmas(
@@ -120,8 +123,15 @@ public ProfessorTCCDTO insert(ProfessorTCCDTO professorTCCDTO) {
     ProfessorTCC professorTCC =
             professorTCCMapper.fromProfessorTCCDTOToProfessorTCC(professorTCCDTO);
 
+    ProfessorTCC professorSalvo = repository.save(professorTCC);
+
+    demoUserProvisioningService.criarContaSeNecessario(
+            professorSalvo,
+            null
+    );
+
     return professorTCCMapper.toProfessorTCCDTO(
-            repository.save(professorTCC)
+            repository.save(professorSalvo)
     );
 }
 

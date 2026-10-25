@@ -8,6 +8,6 @@ export class SubcategoriaService extends BaseService {
 
     findAllByCategoria(idCategoria) {
         let data = { "idCategoria": idCategoria };
-        return axiosInstance.get(this.url, data);
+        return axiosInstance.get(this.url, { params: data });
     }
 }

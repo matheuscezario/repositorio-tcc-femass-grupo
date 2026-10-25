@@ -33,6 +33,8 @@ class Atividade extends Component {
         alunoSelecionadoId: '',
         buscaAluno: '',
 
+        filtroStatus: 'TODOS',
+
         // formulário professor: nova atividade
         showModalCreate: false,
         descricao: '',
@@ -287,6 +289,81 @@ class Atividade extends Component {
         });
     }
 
+    renderFiltroStatus = () => (
+        <div className="mb-3">
+            <label htmlFor="filtroStatus" className="form-label fw-semibold">
+                Filtrar por status
+            </label>
+            <select
+                id="filtroStatus"
+                className="form-select"
+                value={this.state.filtroStatus}
+                onChange={(event) => this.setState({ filtroStatus: event.target.value })}
+            >
+                <option value="TODOS">Todos os status</option>
+                <option value="ENTREGUE_NO_PRAZO">Entregue no prazo</option>
+                <option value="PENDENTE">Pendente</option>
+                <option value="ATRASADA">Atrasada</option>
+                <option value="ENTREGUE_COM_ATRASO">Entregue com atraso</option>
+                <option value="SEM_PRAZO">Sem prazo</option>
+            </select>
+        </div>
+    )
+    getStatusAtividade = (item) => {
+        const somenteData = (valor) => {
+            if (!valor) return null;
+
+            const data = String(valor).substring(0, 10);
+
+            return /^\d{4}-\d{2}-\d{2}$/.test(data)
+                ? data
+                : null;
+        };
+
+        const prazo = somenteData(item.dataEntrega);
+        const entrega = somenteData(item.dataRealizacao);
+
+        if (!prazo) {
+            return {
+                codigo: 'SEM_PRAZO',
+                texto: 'Sem prazo',
+                classe: 'bg-secondary'
+            };
+        }
+
+        if (entrega) {
+            return entrega <= prazo
+                ? {
+                    codigo: 'ENTREGUE_NO_PRAZO',
+                    texto: 'Entregue no prazo',
+                    classe: 'bg-success'
+                }
+                : {
+                    codigo: 'ENTREGUE_COM_ATRASO',
+                    texto: 'Entregue com atraso',
+                    classe: 'bg-info text-dark'
+                };
+        }
+
+        const hoje = new Date();
+        const dataHoje = [
+            hoje.getFullYear(),
+            String(hoje.getMonth() + 1).padStart(2, '0'),
+            String(hoje.getDate()).padStart(2, '0')
+        ].join('-');
+
+        return dataHoje > prazo
+            ? {
+                codigo: 'ATRASADA',
+                texto: 'Atrasada',
+                classe: 'bg-danger'
+            }
+            : {
+                codigo: 'PENDENTE',
+                texto: 'Pendente',
+                classe: 'bg-warning text-dark'
+            };
+    }
     formatDate = (dateStr) => {
         if (!dateStr) return '-';
         const [y, m, d] = dateStr.split('-');
@@ -295,6 +372,11 @@ class Atividade extends Component {
 
     render() {
         const { role, itens, turmas, selectedTurmaId, alunosDaTurma } = this.state;
+
+        const itensFiltrados = itens.filter(item =>
+            this.state.filtroStatus === 'TODOS' ||
+            this.getStatusAtividade(item).codigo === this.state.filtroStatus
+        );
         const isProfessor =
     role === 'MODERATOR' ||
     role === 'ADMIN' ||
@@ -438,7 +520,8 @@ class Atividade extends Component {
                                     <div className="col-12">
                                         <div className="card border-0 shadow-sm">
                                             <div className="card-body p-4">
-                                                <div className="table-responsive">
+                                                {this.renderFiltroStatus()}
+<div className="table-responsive">
                                                     <table className="table table-hover table-sm">
                                                         <thead className="table-dark">
                                                             <tr>
@@ -446,20 +529,21 @@ class Atividade extends Component {
                                                                 <th>Prazo</th>
                                                                 <th>Aluno</th>
                                                                 <th>Data de Entrega</th>
+                                                                <th>Status</th>
                                                                 <th>Nota</th>
                                                                 <th>Arquivo</th>
                                                                 <th className="text-end">Ações</th>
                                                             </tr>
                                                         </thead>
                                                         <tbody>
-                                                            {itens.length === 0 ? (
+                                                            {itensFiltrados.length === 0 ? (
                                                                 <tr>
-                                                                    <td colSpan="7" className="text-center text-muted py-5">
+                                                                    <td colSpan="8" className="text-center text-muted py-5">
                                                                         Nenhum dado encontrado para esta turma
                                                                     </td>
                                                                 </tr>
                                                             ) : (
-                                                                itens.map((item, idx) => (
+                                                                itensFiltrados.map((item, idx) => (
                                                                     <tr key={`${item.idAtividade}-${item.idAluno}`}>
                                                                         <td>
                                                                             <span className="fw-semibold">{item.descricao}</span>
@@ -479,6 +563,11 @@ class Atividade extends Component {
                                                                                     : <span className="badge bg-danger">{this.formatDate(item.dataRealizacao)}</span>
     }
                                                                         </td>
+<td>
+    <span className={`badge ${this.getStatusAtividade(item).classe}`}>
+        {this.getStatusAtividade(item).texto}
+    </span>
+</td>
                                                                         <td>
                                                                             {item.nota !== null && item.nota !== undefined
                                                                                 ? <span className="badge bg-primary">{item.nota}</span>
@@ -504,7 +593,7 @@ class Atividade extends Component {
                                                                         </td>
                                                                         <td className="text-end">
                                                                             {/* Botões de atividade: mostrar apenas na primeira linha do grupo */}
-                                                                            {(idx === 0 || itens[idx - 1]?.idAtividade !== item.idAtividade) && (
+                                                                            {(idx === 0 || itensFiltrados[idx - 1]?.idAtividade !== item.idAtividade) && (
                                                                                 <>
                                                                                     <button
                                                                                         className="btn btn-sm btn-outline-primary me-1"
@@ -552,27 +641,29 @@ class Atividade extends Component {
                             <div className="col-12">
                                 <div className="card border-0 shadow-sm">
                                     <div className="card-body p-4">
-                                        <div className="table-responsive">
+                                        {this.renderFiltroStatus()}
+<div className="table-responsive">
                                             <table className="table table-hover">
                                                 <thead className="table-dark">
                                                     <tr>
                                                         <th>Atividade</th>
                                                         <th>Prazo</th>
                                                         <th>Data de Entrega</th>
+                                                                <th>Status</th>
                                                         <th>Nota</th>
                                                         <th>Arquivo</th>
                                                         <th className="text-end">Ações</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
-                                                    {itens.length === 0 ? (
+                                                    {itensFiltrados.length === 0 ? (
                                                         <tr>
-                                                            <td colSpan="6" className="text-center text-muted py-5">
+                                                            <td colSpan="7" className="text-center text-muted py-5">
                                                                 Nenhuma atividade encontrada
                                                             </td>
                                                         </tr>
                                                     ) : (
-                                                        itens.map((item) => (
+                                                        itensFiltrados.map((item) => (
                                                             <tr key={item.idAtividade || item.id}>
                                                                 <td>{item.descricaoAtividade}</td>
                                                                 <td>{this.formatDate(item.dataEntrega)}</td>
@@ -582,6 +673,11 @@ class Atividade extends Component {
                                                                         : <span className="badge bg-warning text-dark">Pendente</span>
                                                                     }
                                                                 </td>
+<td>
+    <span className={`badge ${this.getStatusAtividade(item).classe}`}>
+        {this.getStatusAtividade(item).texto}
+    </span>
+</td>
                                                                 <td>
                                                                     {item.nota !== null && item.nota !== undefined
                                                                         ? <span className="badge bg-primary">{item.nota}</span>

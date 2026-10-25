@@ -1,6 +1,7 @@
 package com.example.repositorioDeTcc.config;
 
 import jakarta.servlet.DispatcherType;
+import com.example.repositorioDeTcc.service.PerfilUsuarioService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -8,6 +9,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.builders.WebSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -33,6 +35,9 @@ public class SecurityConfig {
 
     @Autowired
     SecurityFilter securityFilter;
+
+    @Autowired
+    PerfilUsuarioService perfilUsuarioService;
 
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -65,6 +70,12 @@ public class SecurityConfig {
                                         "/webjars/**",
                                         "/swagger-ui"
                                 ).permitAll()
+.requestMatchers(HttpMethod.GET, "/categorias", "/categorias/**", "/subcategorias", "/subcategorias/**").authenticated()
+.requestMatchers(HttpMethod.POST, "/categorias", "/categorias/**", "/subcategorias", "/subcategorias/**").access((authentication, context) -> new org.springframework.security.authorization.AuthorizationDecision(authentication.get().getPrincipal() instanceof com.example.repositorioDeTcc.model.User user && perfilUsuarioService.buscarPerfis(user).contains("COORDENADOR")))
+.requestMatchers(HttpMethod.PUT, "/categorias", "/categorias/**", "/subcategorias", "/subcategorias/**").access((authentication, context) -> new org.springframework.security.authorization.AuthorizationDecision(authentication.get().getPrincipal() instanceof com.example.repositorioDeTcc.model.User user && perfilUsuarioService.buscarPerfis(user).contains("COORDENADOR")))
+.requestMatchers(HttpMethod.DELETE, "/categorias", "/categorias/**", "/subcategorias", "/subcategorias/**").access((authentication, context) -> new org.springframework.security.authorization.AuthorizationDecision(authentication.get().getPrincipal() instanceof com.example.repositorioDeTcc.model.User user && perfilUsuarioService.buscarPerfis(user).contains("COORDENADOR")))
+.requestMatchers(HttpMethod.PUT, "/tcc/*/editar-aluno").authenticated()
+.requestMatchers(HttpMethod.PUT, "/tcc/*").hasRole("ADMIN")
 .requestMatchers("/auth/register").hasRole("ADMIN")
 .anyRequest().authenticated()
                 )

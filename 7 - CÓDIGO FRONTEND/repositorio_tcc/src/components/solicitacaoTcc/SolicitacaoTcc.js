@@ -164,7 +164,7 @@ columnsAprovadas = [
         sortable: true
     },
     {
-        name: 'Status',
+        name: 'Situação do TCC',
         cell: row => (
             <span className="badge bg-success">
                 Proposta Aprovada

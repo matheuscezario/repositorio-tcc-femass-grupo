@@ -11,10 +11,10 @@ const MENU_ITEMS = [
   { path: '/tcc', label: 'Trabalhos de Conclusão', perfis: ['ADMIN', 'ALUNO', 'ORIENTADOR', 'COORDENADOR', 'PROFESSOR'] },
   { path: '/solicitacoes-tcc', label: 'Solicitações TCC', perfis: ['ADMIN', 'ORIENTADOR', 'COORDENADOR', 'PROFESSOR'] },
   { path: '/meu-tcc', label: 'Meu TCC', perfis: ['ADMIN', 'ALUNO'] },
-  { path: '/categorias', label: 'Categorias', perfis: ['ADMIN'] },
+  { path: '/categorias', label: 'Categorias', perfis: ['COORDENADOR'] },
   { path: '/users', label: 'Usuários', perfis: ['ADMIN'] },
-  { path: '/atividades', label: 'Atividades', perfis: ['ADMIN', 'ALUNO', 'PROFESSOR'] },
-  { path: '/turmas', label: 'Turmas', perfis: ['ADMIN', 'PROFESSOR'] }
+  { path: '/atividades', label: 'Atividades', perfis: ['ALUNO', 'PROFESSOR'] },
+  { path: '/turmas', label: 'Turmas', perfis: ['PROFESSOR'] }
 ];
 
 export default class Navbar extends Component {
@@ -54,7 +54,14 @@ export default class Navbar extends Component {
     const { role, perfis } = this.state;
 
     if (role === 'ADMIN' || perfis.includes('ADMIN')) {
-      return item.path !== '/meu-tcc' && item.path !== '/categorias';
+      const paginasOcultasAdmin = [
+        '/meu-tcc',
+        '/categorias',
+        '/atividades',
+        '/turmas'
+      ];
+
+      return !paginasOcultasAdmin.includes(item.path);
     }
 
     if (item.perfis.includes('TODOS')) {

@@ -1,6 +1,7 @@
 package com.example.repositorioDeTcc.controller;
 
 import com.example.repositorioDeTcc.dto.TCCDTO;
+import com.example.repositorioDeTcc.dto.TCCEdicaoAlunoDTO;
 import com.example.repositorioDeTcc.dto.TCCMinDTO;
 import com.example.repositorioDeTcc.dto.TCCUpdateDTO;
 import com.example.repositorioDeTcc.service.TCCService;
@@ -16,6 +17,20 @@ import java.util.UUID;
 @RequestMapping(value = "/tcc")
 @CrossOrigin
 public class TCCController {
+
+    @PutMapping(
+        value = "/{id}/editar-aluno",
+        produces = MediaType.APPLICATION_JSON_VALUE,
+        consumes = MediaType.APPLICATION_JSON_VALUE
+    )
+    public ResponseEntity<TCCDTO> editarPeloAluno(
+            @PathVariable UUID id,
+            @RequestBody TCCEdicaoAlunoDTO dados) {
+
+        TCCDTO atualizado = service.editarPeloAluno(id, dados);
+        return ResponseEntity.ok(atualizado);
+    }
+
 
     @Autowired
     TCCService service;

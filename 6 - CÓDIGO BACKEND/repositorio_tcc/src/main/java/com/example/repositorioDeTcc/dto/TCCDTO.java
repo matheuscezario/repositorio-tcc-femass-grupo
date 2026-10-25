@@ -27,6 +27,7 @@ public class TCCDTO {
     private String nomeCompletoOrientador;
     private UUID idCurso;
     private String nomeCurso;
+    private UUID idCategoria;
     private UUID idSubcategoria;
     private String resumo;
     private StatusTCC status;
@@ -42,8 +43,10 @@ public class TCCDTO {
         this.idCurso = entity.getCurso().getId();
         this.nomeCurso = entity.getCurso().getNome();
         // Verifica se a subcategoria é nula antes de acessar seus atributos
-        if(entity.getSubcategoria() != null)
+        if (entity.getSubcategoria() != null) {
             this.idSubcategoria = entity.getSubcategoria().getId();
+            this.idCategoria = entity.getSubcategoria().getCategoria().getId();
+        }
         this.resumo = entity.getResumo();
         this.status = entity.getStatus();
         

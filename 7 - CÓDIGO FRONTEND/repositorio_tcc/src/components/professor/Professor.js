@@ -9,6 +9,12 @@ class Professor extends Component {
     state = {
         listProfessor: [],
         listCursos: [],
+        listTurmas: [],
+        turmasSelecionadasIds: [],
+        professorParaVincular: null,
+        showModalTurmas: false,
+        carregandoVinculos: false,
+        salvandoVinculos: false,
         filterText: '',
         nomeCompleto: '',
         cpf: '',
@@ -87,6 +93,100 @@ class Professor extends Component {
         }
     };
 
+    fillTurmas = async () => {
+        try {
+            const data = await this.request('/turmas');
+
+            const turmas = Array.isArray(data) ? data : [];
+
+            this.setState({ listTurmas: turmas });
+
+            return turmas;
+        } catch (error) {
+            console.error(error);
+            toast.error('Não foi possível carregar as turmas.');
+            throw error;
+        }
+    };
+
+    beginVincularTurmas = async (professor) => {
+        this.setState({
+            carregandoVinculos: true,
+            professorParaVincular: null,
+            turmasSelecionadasIds: []
+        });
+
+        try {
+            const [dadosProfessor, turmas] = await Promise.all([
+                this.request('/professores/' + professor.id),
+                this.fillTurmas()
+            ]);
+
+            const idsVinculados = Array.isArray(dadosProfessor.turmasIds)
+                ? dadosProfessor.turmasIds
+                : [];
+
+            this.setState({
+                professorParaVincular: dadosProfessor,
+                listTurmas: turmas,
+                turmasSelecionadasIds: idsVinculados,
+                showModalTurmas: true
+            });
+        } catch (error) {
+            console.error(error);
+            toast.error('Não foi possível carregar os vínculos do professor.');
+        } finally {
+            this.setState({ carregandoVinculos: false });
+        }
+    };
+    salvarVinculosTurmas = async (event) => {
+        event.preventDefault();
+
+        const {
+            professorParaVincular,
+            turmasSelecionadasIds,
+            salvandoVinculos
+        } = this.state;
+
+        if (salvandoVinculos) return;
+
+        if (!professorParaVincular?.id) {
+            toast.error('Nenhum professor selecionado.');
+            return;
+        }
+
+        const ids = [...new Set(turmasSelecionadasIds)];
+
+        this.setState({ salvandoVinculos: true });
+
+        try {
+            await this.request(
+                '/professores/' + professorParaVincular.id + '/turmas',
+                {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(ids)
+                }
+            );
+
+            this.setState({
+                showModalTurmas: false,
+                professorParaVincular: null,
+                turmasSelecionadasIds: []
+            });
+
+            toast.success('Turmas vinculadas com sucesso!');
+
+            await this.fillList();
+        } catch (error) {
+            console.error(error);
+            toast.error('Não foi possível salvar os vínculos das turmas.');
+        } finally {
+            this.setState({ salvandoVinculos: false });
+        }
+    };
     resetForm = () => ({
         nomeCompleto: '',
         cpf: '',
@@ -525,6 +625,15 @@ class Professor extends Component {
                         >
                             <i className="bi bi-trash" />
                         </button>
+                        <button
+                            className="btn btn-outline-primary mx-1 px-1 py-0"
+                            title="Vincular Turmas"
+                            aria-label="Vincular Turmas"
+                            disabled={this.state.carregandoVinculos}
+                            onClick={() => this.beginVincularTurmas(p)}
+                        >
+                            <i className="bi bi-people" />
+                        </button>
                     </>
                 )
             }
@@ -830,6 +939,110 @@ class Professor extends Component {
                                 {this.state.uploading
                                     ? 'Importando...'
                                     : 'Carregar'}
+                            </Button>
+                        </Modal.Footer>
+                    </form>
+                </Modal>
+
+                <Modal
+                    show={this.state.showModalTurmas}
+                    onHide={() => {
+                        if (!this.state.salvandoVinculos) {
+                            this.closeModal('Turmas');
+                        }
+                    }}
+                    centered
+                >
+                    <Modal.Header
+                        closeButton={!this.state.salvandoVinculos}
+                        className="bg-dark text-white"
+                        closeVariant="white"
+                    >
+                        <Modal.Title>Vincular Turmas</Modal.Title>
+                    </Modal.Header>
+
+                    <form onSubmit={this.salvarVinculosTurmas}>
+                        <Modal.Body>
+                            <p className="mb-3">
+                                <strong>Professor:</strong>{' '}
+                                {this.state.professorParaVincular?.nomeCompleto}
+                            </p>
+
+                            <label className="form-label fw-bold">
+                                Selecione as turmas
+                            </label>
+
+                            {this.state.listTurmas.length === 0 ? (
+                                <p className="text-muted">
+                                    Nenhuma turma cadastrada.
+                                </p>
+                            ) : (
+                                <div
+                                    className="border rounded p-3"
+                                    style={{
+                                        maxHeight: '250px',
+                                        overflowY: 'auto'
+                                    }}
+                                >
+                                    {this.state.listTurmas.map(turma => (
+                                        <div
+                                            className="form-check mb-2"
+                                            key={turma.id}
+                                        >
+                                            <input
+                                                className="form-check-input"
+                                                type="checkbox"
+                                                id={'vinculo-turma-' + turma.id}
+                                                checked={
+                                                    this.state.turmasSelecionadasIds.includes(turma.id)
+                                                }
+                                                disabled={this.state.salvandoVinculos}
+                                                onChange={event => {
+                                                    const selecionadas = this.state.turmasSelecionadasIds;
+
+                                                    this.setState({
+                                                        turmasSelecionadasIds: event.target.checked
+                                                            ? [...selecionadas, turma.id]
+                                                            : selecionadas.filter(id => id !== turma.id)
+                                                    });
+                                                }}
+                                            />
+
+                                            <label
+                                                className="form-check-label"
+                                                htmlFor={'vinculo-turma-' + turma.id}
+                                            >
+                                                {turma.nome}
+                                            </label>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            <small className="text-muted d-block mt-2">
+                                As turmas marcadas serão vinculadas ao professor.
+                                Desmarcar uma turma existente removerá esse vínculo.
+                            </small>
+                        </Modal.Body>
+
+                        <Modal.Footer>
+                            <Button
+                                variant="secondary"
+                                type="button"
+                                disabled={this.state.salvandoVinculos}
+                                onClick={() => this.closeModal('Turmas')}
+                            >
+                                Cancelar
+                            </Button>
+
+                            <Button
+                                variant="primary"
+                                type="submit"
+                                disabled={this.state.salvandoVinculos}
+                            >
+                                {this.state.salvandoVinculos
+                                    ? 'Salvando...'
+                                    : 'Salvar Vínculos'}
                             </Button>
                         </Modal.Footer>
                     </form>

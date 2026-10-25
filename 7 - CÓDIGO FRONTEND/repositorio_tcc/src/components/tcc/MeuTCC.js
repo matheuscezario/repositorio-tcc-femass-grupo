@@ -18,6 +18,7 @@ class MeuTCC extends Component {
   
     state = {
         tccExistente: false,
+        editandoTcc: false,
         tccOriginal: {},
         resumo: '',
         tituloTcc: '',
@@ -54,8 +55,18 @@ class MeuTCC extends Component {
         return;
     }
 
-    if (elementName === 'selectedCategoria' && option) {
-        this.fillOptionsSubcategorias(option.value);
+    if (elementName === 'selectedCategoria') {
+        this.setState({
+            selectedCategoria: option,
+            selectedSubcategoria: null,
+            optionsSubcategorias: [],
+            changesMade: true
+        });
+
+        if (option) {
+            this.fillOptionsSubcategorias(option.value);
+        }
+        return;
     }
 
     this.setState({
@@ -187,49 +198,35 @@ fillOptionsCursos = () => {
 
     submitTCCForm = (event) => {
         event.preventDefault();
-        
-        let data = {
-            "titulo": this.state.tituloTcc,
-            "resumo": this.state.resumo,
-            "id": this.state.tccOriginal.id,
-            "idAluno": this.state.tccOriginal.idAluno,
-            "idOrientador": this.state.tccOriginal.idOrientador,
-            "idCurso": this.state.tccOriginal.idCurso
+
+        const { tituloTcc, resumo, selectedSubcategoria, tccOriginal } = this.state;
+
+        if (!tituloTcc.trim() || !resumo.trim() || !selectedSubcategoria?.value) {
+            toast.error('Preencha titulo, resumo e subcategoria.');
+            return;
         }
 
-        if(this.state.selectedCategoria && this.state.selectedCategoria.value) {data.categoria = this.state.selectedCategoria.value;}
-        if(this.state.selectedSubcategoria && this.state.selectedSubcategoria.value) {data.subcategoria = this.state.selectedSubcategoria.value;}
-        if(this.state.selectedKeywords && this.state.selectedKeywords.length > 0) {data.keywords = this.state.selectedKeywords.map(keyword => keyword.value);}
+        const data = {
+            titulo: tituloTcc.trim(),
+            resumo: resumo.trim(),
+            idSubcategoria: selectedSubcategoria.value
+        };
 
-        this.tccService.update(this.state.tccOriginal.id, data)
-        .then(response => {
-            if(response.status !== 200){ throw new Error('Erro na requisição: ' + response.status); }
-            toast.success('TCC atualizado!', {
-                position: "top-right",
-                autoClose: 2000,
-                hideProgressBar: false,
-                closeOnClick: true,
-                pauseOnHover: true,
-                draggable: true,
-                progress: undefined,
+        this.tccService.editarPeloAluno(tccOriginal.id, data)
+            .then((response) => {
+                if (response.status !== 200) {
+                    throw new Error('Erro na requisicao: ' + response.status);
+                }
+
+                toast.success('TCC atualizado sem alterar as aprovacoes!');
+                this.setState({ editandoTcc: false });
+                this.getMyTcc();
+            })
+            .catch((error) => {
+                console.error('Erro ao atualizar TCC:', error);
+                toast.error('Erro ao salvar as alteracoes do TCC.');
             });
-            this.clearState();
-            this.getMyTcc();
-        })
-        .catch(error => {
-            toast.error('Erro ao salvar', {
-                position: "top-right",
-                autoClose: 3000,
-                hideProgressBar: false,
-                closeOnClick: true,
-                pauseOnHover: true,
-                draggable: true,
-                progress: undefined,
-              });
-            // Lógica para lidar com o erro
-        });
     }
-
     submitPropostaForm = (event) => {
     event.preventDefault();
 
@@ -237,7 +234,8 @@ fillOptionsCursos = () => {
         titulo: this.state.tituloTcc,
         resumo: this.state.resumo,
         idOrientador: this.state.selectedOrientador.value,
-        idCurso: this.state.selectedCurso.value
+        idCurso: this.state.selectedCurso.value,
+    idSubcategoria: this.state.selectedSubcategoria.value
     };
 
     this.tccService.criarProposta(data)
@@ -272,6 +270,48 @@ fillOptionsCursos = () => {
         });
 }
 
+        carregarClassificacaoTcc = async (idCategoria, idSubcategoria) => {
+        if (!idCategoria || !idSubcategoria) {
+            this.setState({
+                selectedCategoria: null,
+                selectedSubcategoria: null,
+                optionsSubcategorias: []
+            });
+            return;
+        }
+
+        try {
+            const [categoriasResponse, subcategoriasResponse] = await Promise.all([
+                this.categoriaService.listAll(),
+                this.subcategoriaService.findAllByCategoria(idCategoria)
+            ]);
+
+            const optionsCategorias = categoriasResponse.data.map(categoria => ({
+                value: categoria.id,
+                label: categoria.nomeCategoria
+            }));
+
+            const optionsSubcategorias = subcategoriasResponse.data.map(subcategoria => ({
+                value: subcategoria.id,
+                label: subcategoria.nomeSubcategoria
+            }));
+
+            this.setState({
+                optionsCategorias,
+                optionsSubcategorias,
+                selectedCategoria: optionsCategorias.find(
+                    categoria => categoria.value === idCategoria
+                ) || null,
+                selectedSubcategoria: optionsSubcategorias.find(
+                    subcategoria => subcategoria.value === idSubcategoria
+                ) || null
+            });
+        } catch (error) {
+            console.error('Erro ao carregar categoria e subcategoria:', error);
+            toast.error('Erro ao carregar a classificacao do TCC.');
+        }
+    }
+
     getMyTcc = () => {
         //Método ainda não implementado no backend  
 
@@ -287,10 +327,11 @@ fillOptionsCursos = () => {
                     aluno: response.data.nomeCompletoAluno,
                     orientador: response.data.nomeCompletoOrientador,
                     status: response.data.status,
-                    selectedCategoria: response.data.categoria,
-                    selectedSubcategoria: response.data.subcategoria,
+                    selectedCategoria: null,
+                    selectedSubcategoria: null,
                     keywords: response.data.keywords
                 });
+                this.carregarClassificacaoTcc(response.data.idCategoria, response.data.idSubcategoria);
             })
             .catch((error) => {
     if (error.response?.status === 404) {
@@ -316,11 +357,119 @@ fillOptionsCursos = () => {
     this.fillOptionsCursos();
     }
 
+    renderFormularioEdicao = () => (
+        <div className="bg-white rounded shadow-sm col-12 col-md-8 col-lg-6 m-auto p-4">
+            <h4 className="fw-bold mb-3">Editar TCC</h4>
+
+            <p className="text-muted">
+                Atualize os dados da sua proposta. O status das aprovacoes
+                sera preservado.
+            </p>
+
+            <form onSubmit={this.submitTCCForm}>
+                <div className="mb-3">
+                    <label className="form-label fw-bold">
+                        Titulo do TCC
+                    </label>
+                    <input
+                        type="text"
+                        className="form-control"
+                        name="tituloTcc"
+                        value={this.state.tituloTcc}
+                        onChange={this.handleChange}
+                        required
+                    />
+                </div>
+
+                <div className="mb-3">
+                    <label className="form-label fw-bold">
+                        Resumo
+                    </label>
+                    <textarea
+                        className="form-control"
+                        name="resumo"
+                        value={this.state.resumo}
+                        onChange={this.handleChange}
+                        rows="5"
+                        required
+                    />
+                </div>
+
+                <div className="mb-3">
+                    <label className="form-label fw-bold">
+                        Categoria
+                    </label>
+                    <Select
+                        options={this.state.optionsCategorias || []}
+                        value={this.state.selectedCategoria || null}
+                        onChange={(option) =>
+                            this.handleChangeSelect(option, 'selectedCategoria')
+                        }
+                        placeholder="Selecione uma categoria"
+                        isClearable={false}
+                    />
+                </div>
+
+                <div className="mb-3">
+                    <label className="form-label fw-bold">
+                        Subcategoria
+                    </label>
+                    <Select
+                        options={this.state.optionsSubcategorias || []}
+                        value={this.state.selectedSubcategoria || null}
+                        onChange={(option) =>
+                            this.handleChangeSelect(option, 'selectedSubcategoria')
+                        }
+                        placeholder={
+                            this.state.selectedCategoria
+                                ? "Selecione uma subcategoria"
+                                : "Selecione primeiro a categoria"
+                        }
+                        isDisabled={!this.state.selectedCategoria}
+                        isClearable={false}
+                    />
+                </div>
+
+                <div className="mb-3">
+                    <strong>Curso:</strong> {this.state.curso}
+                </div>
+
+                <div className="mb-3">
+                    <strong>Orientador:</strong> {this.state.orientador}
+                </div>
+
+                <div className="d-flex gap-2 mt-4">
+                    <button
+                        type="submit"
+                        className="btn btn-primary flex-fill"
+                        disabled={
+                            !this.state.tituloTcc.trim() ||
+                            !this.state.resumo.trim() ||
+                            !this.state.selectedCategoria?.value ||
+                            !this.state.selectedSubcategoria?.value
+                        }
+                    >
+                        Salvar alteracoes
+                    </button>
+
+                    <button
+                        type="button"
+                        className="btn btn-outline-secondary"
+                        onClick={() => this.setState({ editandoTcc: false })}
+                    >
+                        Cancelar
+                    </button>
+                </div>
+            </form>
+        </div>
+    );
     render() {
 
         let document = 'null';
 
-        if (!this.state.tccExistente) {
+        if (this.state.tccExistente && this.state.editandoTcc) {
+        document = this.renderFormularioEdicao();
+    } else if (!this.state.tccExistente) {
     document = (
         <div className="bg-white rounded shadow-sm col-12 col-md-8 col-lg-6 m-auto p-4">
             <h4 className="fw-bold mb-3">Cadastrar proposta de TCC</h4>
@@ -377,6 +526,38 @@ fillOptionsCursos = () => {
     </div>
 
     <div className="mb-3">
+        <label className="form-label fw-bold">Categoria</label>
+        <Select
+            options={this.state.optionsCategorias || []}
+            value={this.state.selectedCategoria || null}
+            onChange={(option) =>
+                this.handleChangeSelect(option, 'selectedCategoria')
+            }
+            placeholder="Selecione uma categoria"
+            isClearable={false}
+            required
+        />
+    </div>
+
+    <div className="mb-3">
+        <label className="form-label fw-bold">Subcategoria</label>
+        <Select
+            options={this.state.optionsSubcategorias || []}
+            value={this.state.selectedSubcategoria || null}
+            onChange={(option) =>
+                this.handleChangeSelect(option, 'selectedSubcategoria')
+            }
+            placeholder={
+                this.state.selectedCategoria
+                    ? "Selecione uma subcategoria"
+                    : "Selecione primeiro a categoria"
+            }
+            isDisabled={!this.state.selectedCategoria}
+            isClearable={false}
+            required
+        />
+    </div>
+    <div className="mb-3">
         <label className="form-label fw-bold">
             Professor orientador
         </label>
@@ -410,7 +591,9 @@ fillOptionsCursos = () => {
             !this.state.tituloTcc.trim() ||
             !this.state.resumo.trim() ||
             !this.state.selectedCurso?.value ||
-            !this.state.selectedOrientador?.value
+            !this.state.selectedOrientador?.value ||
+        !this.state.selectedCategoria?.value ||
+        !this.state.selectedSubcategoria?.value
         }
     >
         Enviar proposta de TCC
@@ -455,6 +638,14 @@ fillOptionsCursos = () => {
             <div className="alert alert-success mt-4 mb-0">
                 Sua proposta foi aprovada pelo orientador e pelo coordenador.
             </div>
+            <button
+                type="button"
+                className="btn btn-primary w-100 mt-3"
+                onClick={() => this.setState({ editandoTcc: true })}
+            >
+                <i className="bi bi-pencil-square me-2"></i>
+                Editar TCC
+            </button>
         </div>
     </>
 } else {
@@ -487,6 +678,14 @@ fillOptionsCursos = () => {
             <div className="alert alert-info mt-4 mb-0">
                 Sua proposta foi enviada e está em processo de aprovação.
             </div>
+            <button
+                type="button"
+                className="btn btn-primary w-100 mt-3"
+                onClick={() => this.setState({ editandoTcc: true })}
+            >
+                <i className="bi bi-pencil-square me-2"></i>
+                Editar TCC
+            </button>
         </div>
     </>
 }

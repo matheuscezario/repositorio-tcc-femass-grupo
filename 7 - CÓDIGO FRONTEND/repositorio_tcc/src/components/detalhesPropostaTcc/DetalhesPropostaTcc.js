@@ -2,6 +2,8 @@ import React, { Component } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import Navbar from '../navbar/Navbar';
 import { TCCService } from '../../service/TCCService';
+import { CategoriaService } from '../../service/CategoriaService';
+import { SubcategoriaService } from '../../service/SubcategoriaService';
 import { ToastContainer, toast } from 'react-toastify';
 import { AtividadeService } from '../../service/AtividadeService';
 import { axiosInstance } from '../../service/BaseService';
@@ -10,6 +12,8 @@ class DetalhesPropostaTcc extends Component {
 
     state = {
     proposta: null,
+    nomeCategoria: '',
+    nomeSubcategoria: '',
     atividades: [],
     carregando: true,
     carregandoAtividades: true,
@@ -17,6 +21,8 @@ class DetalhesPropostaTcc extends Component {
 };
 
 tccService = new TCCService();
+categoriaService = new CategoriaService();
+subcategoriaService = new SubcategoriaService();
 atividadeService = new AtividadeService();
 
 componentDidMount() {
@@ -24,6 +30,38 @@ componentDidMount() {
     this.carregarAtividades();
 }
 
+carregarClassificacao = async (idCategoria, idSubcategoria) => {
+    this.setState({
+        nomeCategoria: '',
+        nomeSubcategoria: ''
+    });
+
+    try {
+        const [categoriasResponse, subcategoriasResponse] = await Promise.all([
+            this.categoriaService.listAll(),
+            this.subcategoriaService.findAllByCategoria(idCategoria)
+        ]);
+
+        const categoria = categoriasResponse.data.find(
+            item => item.id === idCategoria
+        );
+
+        const subcategoria = subcategoriasResponse.data.find(
+            item => item.id === idSubcategoria
+        );
+
+        this.setState({
+            nomeCategoria: categoria?.nomeCategoria || 'Nao informada',
+            nomeSubcategoria: subcategoria?.nomeSubcategoria || 'Nao informada'
+        });
+    } catch (error) {
+        console.error('Erro ao carregar classificacao:', error);
+        this.setState({
+            nomeCategoria: 'Nao disponivel',
+            nomeSubcategoria: 'Nao disponivel'
+        });
+    }
+};
 carregarProposta = () => {
     const { id } = this.props;
 
@@ -31,8 +69,10 @@ carregarProposta = () => {
         .then(response => {
             this.setState({
                 proposta: response.data,
+
                 carregando: false
             });
+            this.carregarClassificacao(response.data.idCategoria, response.data.idSubcategoria);
         })
         .catch(error => {
             console.error('Erro ao carregar proposta:', error);
@@ -141,6 +181,8 @@ baixarArquivo = async (atividade) => {
                                 <p><strong>Orientador:</strong> {proposta.nomeCompletoOrientador}</p>
 
                                 <p><strong>Curso:</strong> {proposta.nomeCurso}</p>
+<p><strong>Categoria:</strong> {this.state.nomeCategoria || 'Carregando...'}</p>
+<p><strong>Subcategoria:</strong> {this.state.nomeSubcategoria || 'Carregando...'}</p>
 
                                 <p>
                                     <strong>Status:</strong>{' '}
@@ -165,22 +207,22 @@ baixarArquivo = async (atividade) => {
 
 
 
-                                <hr />
+
 
                                 <h5>Andamento da Aprovação</h5>
 
                                 <div className="mt-3">
-                                    <p>✅ Proposta enviada pelo aluno</p>
+                                    <p>✅ Proposta submetida</p>
 
                                     <p>
                                         {proposta.status === 'AGUARDANDO_ORIENTADOR'
                                             ? '⏳ Aguardando aprovação do orientador'
-                                            : '✅ Orientador aprovou'}
+                                            : '✅ Aprovação do orientador concluída'}
                                     </p>
 
                                     <p>
                                         {proposta.status === 'PROPOSTA_APROVADA'
-                                            ? '✅ Coordenador aprovou'
+                                            ? '✅ Aprovação da coordenação concluída'
                                             : '⏳ Aguardando aprovação do coordenador'}
                                     </p>
                                 </div>

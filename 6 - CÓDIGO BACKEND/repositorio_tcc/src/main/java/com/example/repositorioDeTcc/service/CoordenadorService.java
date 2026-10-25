@@ -38,6 +38,9 @@ CursoRepository cursoRepository;
     @Autowired
     CoordenadorMapper coordenadorMapper;
 
+    @Autowired
+    DemoUserProvisioningService demoUserProvisioningService;
+
     @Transactional(readOnly = true)
     public CoordenadorDTO findById(UUID id) {
         Optional<Coordenador> obj = repository.findById(id);
@@ -79,8 +82,15 @@ public CoordenadorDTO insert(CoordenadorDTO coordenadorDTO) {
                     curso
             );
 
+    Coordenador coordenadorSalvo = repository.save(coordenador);
+
+    demoUserProvisioningService.criarContaSeNecessario(
+            coordenadorSalvo,
+            null
+    );
+
     return coordenadorMapper.toCoordenadorDTO(
-            repository.save(coordenador)
+            repository.save(coordenadorSalvo)
     );
 }
 

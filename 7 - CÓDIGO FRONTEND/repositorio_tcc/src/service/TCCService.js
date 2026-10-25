@@ -6,6 +6,9 @@ export class TCCService extends BaseService {
         super("/tcc");
     }
 
+    editarPeloAluno(id, data) {
+        return axiosInstance.put(`${this.url}/${id}/editar-aluno`, data);
+    }
     getMyTcc(){
         return axiosInstance.get(`${this.url}/my`);
     }

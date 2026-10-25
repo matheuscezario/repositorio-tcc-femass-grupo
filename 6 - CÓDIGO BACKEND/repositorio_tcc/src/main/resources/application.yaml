@@ -38,3 +38,7 @@ frontend:
 
 upload:
   dir: ${UPLOAD_DIR:uploads/atividades}
+
+gestortcc:
+  demo:
+    enabled: ${GESTORTCC_DEMO_ENABLED:false}

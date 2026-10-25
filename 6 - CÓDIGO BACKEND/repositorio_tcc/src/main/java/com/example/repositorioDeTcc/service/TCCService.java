@@ -1,6 +1,7 @@
 package com.example.repositorioDeTcc.service;
 
 import com.example.repositorioDeTcc.dto.TCCDTO;
+import com.example.repositorioDeTcc.dto.TCCEdicaoAlunoDTO;
 import com.example.repositorioDeTcc.dto.TCCMinDTO;
 import com.example.repositorioDeTcc.dto.TCCUpdateDTO;
 import com.example.repositorioDeTcc.exception.MatriculaNotFoundException;
@@ -37,6 +38,59 @@ import java.util.logging.Logger;
 
 @Service
 public class TCCService {
+
+    @Transactional
+    public TCCDTO editarPeloAluno(UUID id, TCCEdicaoAlunoDTO dados) {
+
+        var authentication = org.springframework.security.core.context
+                .SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null
+                || !(authentication.getPrincipal() instanceof User usuario)) {
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "Usuario nao autenticado."
+            );
+        }
+
+        TCC tcc = repository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(id));
+
+        boolean proprioAluno =
+                usuario.getMatricula() != null
+                && tcc.getAluno() != null
+                && usuario.getMatricula().equals(tcc.getAluno().getMatricula());
+
+        if (!proprioAluno) {
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "Somente o aluno responsavel pode editar este TCC."
+            );
+        }
+
+        if (dados == null
+                || dados.getTitulo() == null
+                || dados.getTitulo().isBlank()
+                || dados.getResumo() == null
+                || dados.getResumo().isBlank()
+                || dados.getIdSubcategoria() == null) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.BAD_REQUEST,
+                    "Titulo, resumo e subcategoria sao obrigatorios."
+            );
+        }
+
+        Subcategoria subcategoria = subcategoriaRepository
+                .findById(dados.getIdSubcategoria())
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(dados.getIdSubcategoria())
+                );
+
+        tcc.setTitulo(dados.getTitulo().trim());
+        tcc.setResumo(dados.getResumo().trim());
+        tcc.setSubcategoria(subcategoria);
+
+        return tccMapper.toTCCDTO(repository.save(tcc));
+    }
+
 
     @Autowired
 private PerfilUsuarioService perfilUsuarioService;

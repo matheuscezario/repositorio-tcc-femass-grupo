@@ -34,6 +34,9 @@ public class AlunoService {
     @Autowired
     TurmaRepository turmaRepository;
 
+    @Autowired
+    DemoUserProvisioningService demoUserProvisioningService;
+
     @Transactional(readOnly = true)
     public AlunoDTO findById(UUID id){
         Optional<Aluno> obj = repository.findById(id);
@@ -63,6 +66,7 @@ public class AlunoService {
                 .collect(java.util.stream.Collectors.toList());
     }
 
+    @Transactional
     public AlunoDTO insert(AlunoDTO alunoDTO){
 
         if(alunoDTO == null) throw new RequiredObjectIsNullException();
@@ -73,7 +77,14 @@ public class AlunoService {
                     .orElseThrow(() -> new ResourceNotFoundException(alunoDTO.getTurmaId()));
             aluno.setTurma(turma);
         }
-        return alunoMapper.toAlunoDTO(repository.save(aluno));
+        Aluno alunoSalvo = repository.save(aluno);
+
+        demoUserProvisioningService.criarContaSeNecessario(
+                alunoSalvo,
+                alunoSalvo.getMatricula()
+        );
+
+        return alunoMapper.toAlunoDTO(repository.save(alunoSalvo));
     }
 
     @Transactional
@@ -116,6 +127,7 @@ public void delete(UUID id) {
         }
     }
 
+    @Transactional
     public Integer importAlunos(MultipartFile file, UUID turmaId) throws IOException {
         String fileName = file.getOriginalFilename();
         if (fileName == null) throw new EntityNotFoundException("File not found");
@@ -135,6 +147,15 @@ public void delete(UUID id) {
         if (turma != null) {
             final Turma turmaFinal = turma;
             alunos.forEach(aluno -> aluno.setTurma(turmaFinal));
+        }
+
+        repository.saveAll(alunos);
+
+        for (Aluno aluno : alunos) {
+            demoUserProvisioningService.criarContaSeNecessario(
+                    aluno,
+                    aluno.getMatricula()
+            );
         }
 
         repository.saveAll(alunos);

@@ -44,6 +44,9 @@ public class OrientadorService {
     @Autowired
     private CursoRepository cursoRepository;
 
+    @Autowired
+    private DemoUserProvisioningService demoUserProvisioningService;
+
     @Transactional(readOnly = true)
     public OrientadorDTO findById(UUID id) {
         Orientador orientador = repository.findById(id)
@@ -79,8 +82,15 @@ public class OrientadorService {
         Orientador orientador =
             orientadorMapper.fromOrientadorDTOToOrientador(dto);
 
+        Orientador orientadorSalvo = repository.save(orientador);
+
+        demoUserProvisioningService.criarContaSeNecessario(
+            orientadorSalvo,
+            null
+        );
+
         return orientadorMapper.toOrientadorDTO(
-            repository.save(orientador)
+            repository.save(orientadorSalvo)
         );
     }
 
