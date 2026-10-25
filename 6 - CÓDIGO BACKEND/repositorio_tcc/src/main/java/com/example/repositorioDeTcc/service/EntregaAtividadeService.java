@@ -21,6 +21,7 @@ import com.example.repositorioDeTcc.model.TCC;
 import com.example.repositorioDeTcc.model.User;
 import com.example.repositorioDeTcc.repository.TCCRepository;
 import com.example.repositorioDeTcc.repository.CoordenadorRepository;
+import com.example.repositorioDeTcc.repository.ProfessorTCCRepository;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.context.SecurityContextHolder;
 
@@ -55,6 +56,9 @@ TCCRepository tccRepository;
 @Autowired
 CoordenadorRepository coordenadorRepository;
 
+@Autowired
+ProfessorTCCRepository professorRepository;
+
     @Transactional(readOnly = true)
     public EntregaAtividadeDTO findById(UUID id) {
         Optional<EntregaAtividade> obj = repository.findById(id);
@@ -84,6 +88,7 @@ CoordenadorRepository coordenadorRepository;
         }
 
         entrega.setDataRealizacao(LocalDate.now());
+        entrega.setDataHoraEnvio(java.time.LocalDateTime.now());
         return new EntregaAtividadeDTO(repository.save(entrega));
     }
 
@@ -148,7 +153,28 @@ public Resource downloadArquivo(UUID entregaId) throws MalformedURLException {
         }
     }
 
-    if (!proprioAluno && !orientadorResponsavel && !coordenadorResponsavel) {
+    boolean professorDaTurma = false;
+
+    if (usuario.getEmail() != null && aluno.getTurma() != null) {
+        var professor = professorRepository.findByEmail(usuario.getEmail());
+
+        professorDaTurma = professor.isPresent()
+                && professor.get().getUser() != null
+                && usuario.getId().equals(professor.get().getUser().getId())
+                && professor.get().getTurmas().stream()
+                        .anyMatch(turma ->
+                                turma.getId().equals(aluno.getTurma().getId())
+                        );
+    }
+
+    boolean administrador = authentication.getAuthorities().stream()
+            .anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority()));
+
+    if (!proprioAluno
+            && !orientadorResponsavel
+            && !coordenadorResponsavel
+            && !professorDaTurma
+            && !administrador) {
         throw new AccessDeniedException(
                 "Você não possui permissão para baixar este arquivo."
         );

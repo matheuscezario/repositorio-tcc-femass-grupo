@@ -123,7 +123,7 @@ baixarArquivo = async (atividade) => {
     to="/solicitacoes-tcc"
     className="btn btn-outline-secondary mb-4"
 >
-    ← Voltar às Solicitações
+    Voltar às Solicitações
 </Link>
 
                     <h2 className="mb-4">Detalhes da Proposta de TCC</h2>
@@ -163,22 +163,7 @@ baixarArquivo = async (atividade) => {
 
                                 <hr />
 
-                                <h5>Palavras-chave</h5>
 
-                                {proposta.palavrasChave?.length > 0 ? (
-                                    <div className="d-flex flex-wrap gap-2">
-                                        {proposta.palavrasChave.map((palavra, index) => (
-                                            <span
-                                                key={index}
-                                                className="badge bg-secondary"
-                                            >
-                                                {palavra.palavra || palavra.nome || 'Palavra-chave'}
-                                            </span>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <p>Nenhuma palavra-chave cadastrada.</p>
-                                )}
 
                                 <hr />
 
@@ -210,59 +195,101 @@ baixarArquivo = async (atividade) => {
     <div className="alert alert-warning">
         Não foi possível carregar as atividades deste aluno.
     </div>
-) : atividades.length === 0 ? (
-    <p className="text-muted">
-        Nenhuma atividade cadastrada para este aluno.
-    </p>
 ) : (
-    <div className="table-responsive">
-        <table className="table table-striped table-bordered align-middle">
-            <thead>
-                <tr>
-                    <th>Atividade</th>
-                    <th>Prazo</th>
-                    <th>Situação</th>
-                    <th>Data da entrega</th>
-                    <th>Nota</th>
-                    <th>Arquivo</th>
-                </tr>
-            </thead>
-            <tbody>
-                {atividades.map(atividade => (
-                    <tr key={atividade.idAtividade}>
-                        <td>{atividade.descricaoAtividade}</td>
-                        <td>{atividade.dataEntrega || '—'}</td>
-                        <td>
-                            {atividade.id ? (
-                                <span className="badge bg-success">Entregue</span>
-                            ) : (
-                                <span className="badge bg-warning text-dark">
-                                    Pendente
-                                </span>
-                            )}
-                        </td>
-                        <td>{atividade.dataRealizacao || '—'}</td>
-                        <td>{atividade.nota ?? '—'}</td>
-                        <td>
-    {atividade.id && atividade.arquivoNome ? (
-        <button
-            type="button"
-            className="btn btn-outline-primary btn-sm"
-            onClick={() => this.baixarArquivo(atividade)}
-        >
-            📄 Baixar PDF
-        </button>
-    ) : (
-        <span className="text-muted">—</span>
-    )}
-</td>
-                    </tr>
-                ))}
-            </tbody>
-        </table>
-    </div>
-)}
+    <>
+        {(() => {
+            const entregasComArquivo = atividades
+                .filter(atividade => atividade.id && atividade.arquivoNome)
+                .sort((a, b) => {
+                    const dataA = a.dataHoraEnvio || a.dataRealizacao || '';
+                    const dataB = b.dataHoraEnvio || b.dataRealizacao || '';
+                    return dataB.localeCompare(dataA);
+                });
 
+            const arquivoAtual = entregasComArquivo[0];
+
+            return (
+                <div className="card border-primary mb-4">
+                    <div className="card-body">
+                        <h6 className="card-title mb-3">
+                            📄 Versão atual do TCC
+                        </h6>
+
+                        {arquivoAtual ? (
+                            <div className="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                                <div>
+                                    <p className="mb-1 fw-semibold">
+                                        {arquivoAtual.arquivoNome}
+                                    </p>
+
+                                    <small className="text-muted">
+                                        Última entrega: {arquivoAtual.dataRealizacao || 'Não informada'}
+                                    </small>
+                                </div>
+
+                                <button
+                                    type="button"
+                                    className="btn btn-primary"
+                                    onClick={() => this.baixarArquivo(arquivoAtual)}
+                                >
+                                    📥 Baixar PDF atual
+                                </button>
+                            </div>
+                        ) : (
+                            <p className="text-muted mb-0">
+                                Nenhum PDF foi enviado até o momento.
+                            </p>
+                        )}
+                    </div>
+                </div>
+            );
+        })()}
+
+        <h6 className="mb-3">Histórico de atividades</h6>
+
+        {atividades.length === 0 ? (
+            <p className="text-muted">
+                Nenhuma atividade cadastrada para este aluno.
+            </p>
+        ) : (
+            <div className="table-responsive">
+                <table className="table table-striped table-bordered align-middle">
+                    <thead>
+                        <tr>
+                            <th>Atividade</th>
+                            <th>Prazo</th>
+                            <th>Situação</th>
+                            <th>Data da entrega</th>
+                            <th>Nota</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {atividades.map(atividade => (
+                            <tr key={atividade.idAtividade}>
+                                <td>{atividade.descricaoAtividade}</td>
+                                <td>{atividade.dataEntrega || '—'}</td>
+                                <td>
+                                    {atividade.id ? (
+                                        <span className="badge bg-success">
+                                            Entregue
+                                        </span>
+                                    ) : (
+                                        <span className="badge bg-warning text-dark">
+                                            Pendente
+                                        </span>
+                                    )}
+                                </td>
+                                <td>{atividade.dataRealizacao || '—'}</td>
+                                <td>{atividade.nota ?? '—'}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        )}
+    </>
+)}
                             </div>
                         </div>
                     ) : (

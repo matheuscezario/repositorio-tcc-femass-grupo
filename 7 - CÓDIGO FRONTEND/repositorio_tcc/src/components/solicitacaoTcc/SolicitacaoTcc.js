@@ -285,28 +285,15 @@ aprovarCoordenador = (id) => {
 
         <DataTable
             columns={this.columns}
-            data={this.state.solicitacoes}
+            data={[
+    ...this.state.solicitacoes,
+    ...this.state.propostasEmAcompanhamento
+].filter((proposta, indice, lista) =>
+    lista.findIndex(item => item.id === proposta.id) === indice
+)}
             noDataComponent={
                 <div className="p-4 text-center text-muted">
                     Nenhuma solicitação de TCC pendente
-                </div>
-            }
-        />
-    </div>
-</div>
-
-<div className="card border-0 shadow-sm mb-4">
-    <div className="card-body">
-        <h4 className="fw-bold mb-3">
-            Aguardando Coordenador
-        </h4>
-
-        <DataTable
-            columns={this.columnsAcompanhamento}
-            data={this.state.propostasEmAcompanhamento}
-            noDataComponent={
-                <div className="p-4 text-center text-muted">
-                    Nenhuma proposta aguardando aprovação do coordenador
                 </div>
             }
         />

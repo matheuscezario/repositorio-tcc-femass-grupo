@@ -7,6 +7,7 @@ import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Getter
@@ -21,6 +22,7 @@ public class EntregaAtividadeDTO {
     private UUID idAluno;
     private String nomeAluno;
     private LocalDate dataRealizacao;
+    private LocalDateTime dataHoraEnvio;
     private BigDecimal nota;
     private String arquivoNome;
 
@@ -32,6 +34,7 @@ public class EntregaAtividadeDTO {
         this.idAluno = entrega.getAluno().getId();
         this.nomeAluno = entrega.getAluno().getNomeCompleto();
         this.dataRealizacao = entrega.getDataRealizacao();
+        this.dataHoraEnvio = entrega.getDataHoraEnvio();
         this.nota = entrega.getNota();
         this.arquivoNome = entrega.getArquivoNome();
     }

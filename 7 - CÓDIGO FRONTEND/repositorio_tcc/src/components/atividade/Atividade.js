@@ -30,6 +30,8 @@ class Atividade extends Component {
         turmas: [],
         selectedTurmaId: '',
         alunosDaTurma: [],
+        alunoSelecionadoId: '',
+        buscaAluno: '',
 
         // formulário professor: nova atividade
         showModalCreate: false,
@@ -114,7 +116,13 @@ class Atividade extends Component {
 
     handleTurmaChange = (event) => {
         const turmaId = event.target.value;
-        this.setState({ selectedTurmaId: turmaId, itens: [], alunosDaTurma: [] });
+        this.setState({
+            selectedTurmaId: turmaId,
+            itens: [],
+            alunosDaTurma: [],
+            alunoSelecionadoId: '',
+            buscaAluno: ''
+        });
         if (turmaId) {
             this.atividadeService.findByTurma(turmaId)
                 .then(res => this.setState({ itens: res.data }))
@@ -358,11 +366,59 @@ class Atividade extends Component {
                                                 <span className="badge bg-light text-dark">{alunosDaTurma.length}</span>
                                             </div>
                                             <div className="card-body p-3">
+                                                <div className="row mb-3">
+                                                    <div className="col-md-6">
+                                                        <label htmlFor="selectAluno" className="form-label fw-semibold">
+                                                            Selecionar Aluno
+                                                        </label>
+                                                        <select
+                                                            id="selectAluno"
+                                                            className="form-select"
+                                                            value={this.state.alunoSelecionadoId}
+                                                            onChange={(event) => this.setState({ alunoSelecionadoId: event.target.value })}
+                                                        >
+                                                            <option value="">Todos os alunos</option>
+                                                            {alunosDaTurma.map(aluno => (
+                                                                <option key={aluno.id} value={aluno.id}>
+                                                                    {aluno.nomeCompleto} ({aluno.matricula})
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                    <div className="col-md-6">
+                                                        <label htmlFor="buscaAluno" className="form-label fw-semibold">
+                                                            Pesquisar Aluno
+                                                        </label>
+                                                        <input
+                                                            type="text"
+                                                            id="buscaAluno"
+                                                            className="form-control"
+                                                            placeholder="Digite o nome ou a matrícula..."
+                                                            value={this.state.buscaAluno}
+                                                            onChange={(event) => this.setState({ buscaAluno: event.target.value })}
+                                                        />
+                                                    </div>
+                                                </div>
                                                 {alunosDaTurma.length === 0 ? (
                                                     <p className="text-muted mb-0 text-center py-2">Nenhum aluno matriculado nesta turma</p>
                                                 ) : (
                                                     <div className="d-flex flex-wrap gap-2">
-                                                        {alunosDaTurma.map(aluno => (
+                                                        {alunosDaTurma
+    .filter(aluno => {
+        const selecionado = this.state.alunoSelecionadoId;
+        const busca = this.state.buscaAluno.trim().toLowerCase();
+
+        const correspondeSelecao =
+            !selecionado || String(aluno.id) === String(selecionado);
+
+        const correspondeBusca =
+            !busca ||
+            (aluno.nomeCompleto || '').toLowerCase().includes(busca) ||
+            String(aluno.matricula || '').toLowerCase().includes(busca);
+
+        return correspondeSelecao && correspondeBusca;
+    })
+    .map(aluno => (
                                                             <span key={aluno.id} className="badge bg-light text-dark border px-3 py-2" style={{ fontSize: '0.85rem' }}>
                                                                 <i className="bi bi-person me-1"></i>
                                                                 {aluno.nomeCompleto}

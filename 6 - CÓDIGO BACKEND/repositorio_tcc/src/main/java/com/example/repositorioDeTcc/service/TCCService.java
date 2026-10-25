@@ -111,10 +111,14 @@ public TCCDTO findById(UUID id) {
 
     boolean professorDaTurma = professorPodeVisualizarTcc(usuario, tcc);
 
+    boolean administrador = authentication.getAuthorities().stream()
+            .anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority()));
+
 if (!proprioAluno
         && !orientadorResponsavel
         && !coordenadorResponsavel
-        && !professorDaTurma) {
+        && !professorDaTurma
+        && !administrador) {
 
     throw new org.springframework.security.access.AccessDeniedException(
             "Você não possui permissão para visualizar esta proposta."
@@ -327,7 +331,12 @@ public List<TCCMinDTO> findSolicitacoesPendentes() {
     return repository.findAll().stream()
             .filter(tcc -> {
 
-                // Ignora propostas de alunos desativados.
+                boolean administrador = authentication.getAuthorities()
+        .stream()
+        .anyMatch(authority ->
+                "ROLE_ADMIN".equals(authority.getAuthority())
+        );
+// Ignora propostas de alunos desativados.
                 if (tcc.getAluno() == null
                         || !Boolean.TRUE.equals(tcc.getAluno().getAtivo())) {
                     return false;
@@ -355,7 +364,7 @@ public List<TCCMinDTO> findSolicitacoesPendentes() {
                         || tcc.getStatus() == StatusTCC.AGUARDANDO_COORDENADOR)
                         && professorPodeVisualizarTcc(usuario, tcc);
 
-                return pendenteOrientador
+                return (administrador && (tcc.getStatus() == StatusTCC.AGUARDANDO_ORIENTADOR || tcc.getStatus() == StatusTCC.AGUARDANDO_COORDENADOR)) || pendenteOrientador
                         || pendenteCoordenador
                         || pendenteProfessor;
             })
@@ -383,7 +392,12 @@ public List<TCCMinDTO> findPropostasEmAcompanhamento() {
     return repository.findAll().stream()
             .filter(tcc -> {
 
-                // Ignora propostas de alunos desativados.
+                boolean administrador = authentication.getAuthorities()
+        .stream()
+        .anyMatch(authority ->
+                "ROLE_ADMIN".equals(authority.getAuthority())
+        );
+// Ignora propostas de alunos desativados.
                 if (tcc.getAluno() == null
                         || !Boolean.TRUE.equals(tcc.getAluno().getAtivo())) {
                     return false;
@@ -403,7 +417,7 @@ public List<TCCMinDTO> findPropostasEmAcompanhamento() {
                 boolean professorDaTurma =
                         professorPodeVisualizarTcc(usuario, tcc);
 
-                return orientadorResponsavel || professorDaTurma;
+                return administrador || orientadorResponsavel || professorDaTurma;
             })
             .map(TCCMinDTO::new)
             .toList();
@@ -435,6 +449,12 @@ public List<TCCMinDTO> findPropostasAprovadas() {
     return repository.findAll().stream()
             .filter(tcc -> {
 
+                boolean administrador = authentication.getAuthorities()
+        .stream()
+        .anyMatch(authority ->
+                "ROLE_ADMIN".equals(authority.getAuthority())
+        );
+
                 // Ignora propostas de alunos desativados.
                 if (tcc.getAluno() == null
                         || !Boolean.TRUE.equals(tcc.getAluno().getAtivo())) {
@@ -463,9 +483,7 @@ public List<TCCMinDTO> findPropostasAprovadas() {
                 boolean professorDaTurma =
                         professorPodeVisualizarTcc(usuario, tcc);
 
-                return orientadorResponsavel
-                        || coordenadorResponsavel
-                        || professorDaTurma;
+                return administrador || orientadorResponsavel || coordenadorResponsavel || professorDaTurma;
             })
             .map(TCCMinDTO::new)
             .toList();

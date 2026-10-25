@@ -9,6 +9,7 @@ import lombok.Setter;
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
@@ -32,6 +33,9 @@ public class EntregaAtividade implements Serializable {
 
     @Column(name = "data_realizacao")
     private LocalDate dataRealizacao;
+
+    @Column(name = "data_hora_envio")
+    private LocalDateTime dataHoraEnvio;
 
     @Column(precision = 4, scale = 1)
     private BigDecimal nota;
