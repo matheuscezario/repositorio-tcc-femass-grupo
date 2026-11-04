@@ -88,7 +88,47 @@ public class TCCService {
         tcc.setResumo(dados.getResumo().trim());
         tcc.setSubcategoria(subcategoria);
 
-        return tccMapper.toTCCDTO(repository.save(tcc));
+                // Atualiza as tags somente quando enviadas pelo aluno.
+        if (dados.getPalavrasChave() != null) {
+            Set<PalavraChave> palavras = new HashSet<>();
+
+            for (var palavraDTO : dados.getPalavrasChave()) {
+                if (palavraDTO == null) {
+                    continue;
+                }
+
+                PalavraChave palavra = null;
+
+                if (palavraDTO.getId() != null) {
+                    palavra = palavraChaveRepository
+                            .findById(palavraDTO.getId())
+                            .orElse(null);
+                }
+
+                if (palavra == null
+                        && palavraDTO.getNome() != null
+                        && !palavraDTO.getNome().isBlank()) {
+
+                    String nome = palavraDTO.getNome().trim();
+
+                    palavra = palavraChaveRepository
+                            .findByNome(nome)
+                            .orElse(null);
+
+                    if (palavra == null) {
+                        palavra = palavraChaveRepository
+                                .save(new PalavraChave(nome));
+                    }
+                }
+
+                if (palavra != null) {
+                    palavras.add(palavra);
+                }
+            }
+
+            tcc.setPalavrasChave(palavras);
+        }
+return tccMapper.toTCCDTO(repository.save(tcc));
     }
 
 

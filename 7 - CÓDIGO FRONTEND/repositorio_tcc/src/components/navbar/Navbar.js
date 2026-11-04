@@ -58,7 +58,9 @@ export default class Navbar extends Component {
         '/meu-tcc',
         '/categorias',
         '/atividades',
-        '/turmas'
+        '/turmas',
+        '/tcc',
+        '/solicitacoes-tcc'
       ];
 
       return !paginasOcultasAdmin.includes(item.path);

@@ -35,6 +35,11 @@ class Atividade extends Component {
 
         filtroStatus: 'TODOS',
 
+        // filtros do gerenciamento de atividades
+        buscaAtividade: '',
+        filtroPrazoAtividade: 'TODOS',
+        ordemAtividade: 'PRAZO_PROXIMO',
+
         // formulário professor: nova atividade
         showModalCreate: false,
         descricao: '',
@@ -388,6 +393,55 @@ class Atividade extends Component {
             ? [...new Map(itens.map(i => [i.idAtividade, i])).values()]
             : [];
 
+        // Pesquisa, filtro por prazo e ordenacao das atividades
+        const hoje = new Date();
+        hoje.setHours(0, 0, 0, 0);
+
+        const atividadesGerenciamento = uniqueAtividades
+            .filter(item => {
+                const busca = this.state.buscaAtividade.trim().toLowerCase();
+                const descricao = (item.descricao || '').toLowerCase();
+
+                if (busca && !descricao.includes(busca)) {
+                    return false;
+                }
+
+                const prazo = item.dataEntrega
+                    ? new Date(item.dataEntrega.substring(0, 10) + 'T00:00:00')
+                    : null;
+
+                if (this.state.filtroPrazoAtividade === 'VENCIDAS') {
+                    return prazo && prazo < hoje;
+                }
+
+                if (this.state.filtroPrazoAtividade === 'DENTRO_PRAZO') {
+                    return prazo && prazo >= hoje;
+                }
+
+                return true;
+            })
+            .sort((a, b) => {
+                if (this.state.ordemAtividade === 'NOME') {
+                    return (a.descricao || '').localeCompare(
+                        b.descricao || '', 'pt-BR'
+                    );
+                }
+
+                const prazoA = a.dataEntrega
+                    ? new Date(a.dataEntrega.substring(0, 10)).getTime()
+                    : Number.MAX_SAFE_INTEGER;
+
+                const prazoB = b.dataEntrega
+                    ? new Date(b.dataEntrega.substring(0, 10)).getTime()
+                    : Number.MAX_SAFE_INTEGER;
+
+                if (this.state.ordemAtividade === 'PRAZO_DISTANTE') {
+                    return prazoB - prazoA;
+                }
+
+                return prazoA - prazoB;
+            });
+
         return (
             <div className="tcc-page bg-light min-vh-100">
                 <Navbar />
@@ -436,6 +490,114 @@ class Atividade extends Component {
                                 </div>
                             </div>
 
+                            {selectedTurmaId && (
+                                <div className="card border-0 shadow-sm mb-4">
+                                    <div className="card-header bg-dark text-white fw-semibold">
+                                        <i className="bi bi-journal-text me-2"></i>
+                                        Gerenciamento de Atividades
+                                    </div>
+                                    <div className="card-body">
+                                        <div className="row g-3 mb-3">
+                                            <div className="col-md-4">
+                                                <label className="form-label fw-semibold">
+                                                    Pesquisar atividade
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    className="form-control"
+                                                    placeholder="Digite o nome da atividade..."
+                                                    value={this.state.buscaAtividade}
+                                                    onChange={e => this.setState({ buscaAtividade: e.target.value })}
+                                                />
+                                            </div>
+                                            <div className="col-md-3">
+                                                <label className="form-label fw-semibold">
+                                                    Prazo
+                                                </label>
+                                                <select
+                                                    className="form-select"
+                                                    value={this.state.filtroPrazoAtividade}
+                                                    onChange={e => this.setState({ filtroPrazoAtividade: e.target.value })}
+                                                >
+                                                    <option value="TODOS">Todos</option>
+                                                    <option value="DENTRO_PRAZO">Dentro do prazo</option>
+                                                    <option value="VENCIDAS">Vencidas</option>
+                                                </select>
+                                            </div>
+                                            <div className="col-md-3">
+                                                <label className="form-label fw-semibold">
+                                                    Ordenar por
+                                                </label>
+                                                <select
+                                                    className="form-select"
+                                                    value={this.state.ordemAtividade}
+                                                    onChange={e => this.setState({ ordemAtividade: e.target.value })}
+                                                >
+                                                    <option value="PRAZO_PROXIMO">Prazo mais próximo</option>
+                                                    <option value="PRAZO_DISTANTE">Prazo mais distante</option>
+                                                    <option value="NOME">Nome A–Z</option>
+                                                </select>
+                                            </div>
+                                            <div className="col-md-2 d-flex align-items-end">
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-outline-secondary w-100"
+                                                    onClick={() => this.setState({
+                                                        buscaAtividade: '',
+                                                        filtroPrazoAtividade: 'TODOS',
+                                                        ordemAtividade: 'PRAZO_PROXIMO'
+                                                    })}
+                                                >
+                                                    Limpar filtros
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div className="table-responsive">
+                                            <table className="table table-hover align-middle">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Atividade</th>
+                                                        <th>Prazo</th>
+                                                        <th className="text-end">Ações</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {atividadesGerenciamento.length === 0 ? (
+                                                        <tr>
+                                                            <td colSpan="3" className="text-center text-muted">
+                                                                Nenhuma atividade cadastrada
+                                                            </td>
+                                                        </tr>
+                                                    ) : (
+                                                        atividadesGerenciamento.map(item => (
+                                                            <tr key={item.idAtividade}>
+                                                                <td>{item.descricao}</td>
+                                                                <td>{this.formatDate(item.dataEntrega)}</td>
+                                                                <td className="text-end">
+                                                                    <button
+                                                                        className="btn btn-sm btn-outline-primary me-2"
+                                                                        onClick={() => this.beginEdit(item)}
+                                                                        title="Editar atividade"
+                                                                    >
+                                                                        <i className="bi bi-pencil"></i>
+                                                                    </button>
+                                                                    <button
+                                                                        className="btn btn-sm btn-outline-danger"
+                                                                        onClick={() => this.beginDeletion(item)}
+                                                                        title="Excluir atividade"
+                                                                    >
+                                                                        <i className="bi bi-trash"></i>
+                                                                    </button>
+                                                                </td>
+                                                            </tr>
+                                                        ))
+                                                    )}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                             {selectedTurmaId && (
                                 <div className="row mb-3">
                                     <div className="col-12">
@@ -529,16 +691,16 @@ class Atividade extends Component {
                                                                 <th>Prazo</th>
                                                                 <th>Aluno</th>
                                                                 <th>Data de Entrega</th>
-                                                                <th>Status</th>
+                                                                <th>Situação</th>
                                                                 <th>Nota</th>
                                                                 <th>Arquivo</th>
-                                                                <th className="text-end">Ações</th>
+
                                                             </tr>
                                                         </thead>
                                                         <tbody>
                                                             {itensFiltrados.length === 0 ? (
                                                                 <tr>
-                                                                    <td colSpan="8" className="text-center text-muted py-5">
+                                                                    <td colSpan="7" className="text-center text-muted py-5">
                                                                         Nenhum dado encontrado para esta turma
                                                                     </td>
                                                                 </tr>
@@ -556,12 +718,10 @@ class Atividade extends Component {
                                                                                 : <span className="badge bg-secondary">Pendente</span>
                                                                             } */}
 
-                                                                            {!item.dataRealizacao
-                                                                                ? <span className="badge bg-secondary">Pendente</span>
-                                                                                : new Date(item.dataRealizacao) <= new Date(item.dataEntrega)
-                                                                                    ? <span className="badge bg-success">{this.formatDate(item.dataRealizacao)}</span>
-                                                                                    : <span className="badge bg-danger">{this.formatDate(item.dataRealizacao)}</span>
-    }
+                                                                            {item.dataRealizacao
+    ? this.formatDate(item.dataRealizacao)
+    : 'Pendente'
+}
                                                                         </td>
 <td>
     <span className={`badge ${this.getStatusAtividade(item).classe}`}>
@@ -573,7 +733,16 @@ class Atividade extends Component {
                                                                                 ? <span className="badge bg-primary">{item.nota}</span>
                                                                                 : '-'
                                                                             }
-                                                                        </td>
+
+                                                                            {item.idEntrega && (
+                                                                                <button
+                                                                                    className="btn btn-sm btn-outline-success"
+                                                                                    onClick={() => this.beginLancarNota(item)}
+                                                                                    title="Lançar nota"
+                                                                                >
+                                                                                    <i className="bi bi-star"></i>
+                                                                                </button>
+                                                                            )}</td>
                                                                         <td>
                                                                             {item.arquivoNome
                                                                                 ? (
@@ -591,36 +760,7 @@ class Atividade extends Component {
                                                                                 : '-'
                                                                             }
                                                                         </td>
-                                                                        <td className="text-end">
-                                                                            {/* Botões de atividade: mostrar apenas na primeira linha do grupo */}
-                                                                            {(idx === 0 || itensFiltrados[idx - 1]?.idAtividade !== item.idAtividade) && (
-                                                                                <>
-                                                                                    <button
-                                                                                        className="btn btn-sm btn-outline-primary me-1"
-                                                                                        onClick={() => this.beginEdit(item)}
-                                                                                        title="Editar atividade"
-                                                                                    >
-                                                                                        <i className="bi bi-pencil"></i>
-                                                                                    </button>
-                                                                                    <button
-                                                                                        className="btn btn-sm btn-outline-danger me-1"
-                                                                                        onClick={() => this.beginDeletion(item)}
-                                                                                        title="Excluir atividade"
-                                                                                    >
-                                                                                        <i className="bi bi-trash"></i>
-                                                                                    </button>
-                                                                                </>
-                                                                            )}
-                                                                            {item.idEntrega && (
-                                                                                <button
-                                                                                    className="btn btn-sm btn-outline-success"
-                                                                                    onClick={() => this.beginLancarNota(item)}
-                                                                                    title="Lançar nota"
-                                                                                >
-                                                                                    <i className="bi bi-star"></i>
-                                                                                </button>
-                                                                            )}
-                                                                        </td>
+
                                                                     </tr>
                                                                 ))
                                                             )}
@@ -649,7 +789,7 @@ class Atividade extends Component {
                                                         <th>Atividade</th>
                                                         <th>Prazo</th>
                                                         <th>Data de Entrega</th>
-                                                                <th>Status</th>
+                                                                <th>Situação</th>
                                                         <th>Nota</th>
                                                         <th>Arquivo</th>
                                                         <th className="text-end">Ações</th>
@@ -669,8 +809,8 @@ class Atividade extends Component {
                                                                 <td>{this.formatDate(item.dataEntrega)}</td>
                                                                 <td>
                                                                     {item.dataRealizacao
-                                                                        ? <span className="badge bg-success">{this.formatDate(item.dataRealizacao)}</span>
-                                                                        : <span className="badge bg-warning text-dark">Pendente</span>
+                                                                        ? this.formatDate(item.dataRealizacao)
+                                                                        : 'Pendente'
                                                                     }
                                                                 </td>
 <td>

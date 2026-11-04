@@ -13,7 +13,14 @@ import com.example.repositorioDeTcc.repository.TurmaRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.apache.poi.ss.usermodel.*;
 import org.springframework.beans.factory.annotation.Autowired;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.stereotype.Service;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import java.io.BufferedReader;
@@ -24,6 +31,12 @@ import com.example.repositorioDeTcc.model.User;
 
 @Service
 public class AlunoService {
+
+    @Value("${upload.dir:uploads/atividades}")
+    private String uploadDir;
+
+    @Autowired
+    JdbcTemplate jdbcTemplate;
 
     @Autowired
     AlunoRepository repository;
@@ -51,6 +64,13 @@ public class AlunoService {
         return listDto;
     }
 
+    @Transactional(readOnly = true)
+    public List<AlunoMinDTO> findInativos() {
+        return repository.findAllByAtivoIsFalse()
+                .stream()
+                .map(AlunoMinDTO::new)
+                .toList();
+    }
     @Transactional(readOnly = true)
     public List<AlunoMinDTO> findByTurmaId(UUID turmaId) {
         return repository.findAllByAtivoIsTrue()
@@ -92,19 +112,110 @@ public void delete(UUID id) {
     Aluno aluno = repository.findById(id)
         .orElseThrow(() -> new ResourceNotFoundException(id));
 
-    // Desativa o aluno sem excluir seus dados
-    aluno.setAtivo(false);
-
-    // Desativa também a conta de acesso vinculada
     User usuario = aluno.getUser();
 
-    if (usuario != null) {
-        usuario.setEnabled(false);
-    }
+    List<String> arquivos = jdbcTemplate.queryForList(
+        "SELECT arquivo_caminho FROM entrega_atividade WHERE aluno_id = ? AND arquivo_caminho IS NOT NULL",
+        String.class,
+        id
+    );
 
-    repository.save(aluno);
+    TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+        @Override
+        public void afterCommit() {
+            Path raiz = Paths.get(uploadDir).toAbsolutePath().normalize();
+
+            for (String arquivo : arquivos) {
+                try {
+                    Path destino = raiz.resolve(arquivo).normalize();
+
+                    if (destino.startsWith(raiz)
+                            && destino.toString().contains(id.toString())) {
+                        Files.deleteIfExists(destino);
+                    }
+                } catch (IOException e) {
+                    System.err.println("Falha ao remover arquivo do aluno: " + e.getMessage());
+                }
+            }
+        }
+    });
+
+    jdbcTemplate.update(
+        "DELETE FROM banca_tcc WHERE id_tcc IN (SELECT id FROM tcc WHERE id_aluno = ?)", id
+    );
+
+    jdbcTemplate.update("DELETE FROM tcc WHERE id_aluno = ?", id);
+    jdbcTemplate.update("DELETE FROM entrega_atividade WHERE aluno_id = ?", id);
+    jdbcTemplate.update("DELETE FROM aluno WHERE id = ?", id);
+    jdbcTemplate.update("DELETE FROM pessoa WHERE id = ?", id);
+
+    if (usuario != null) {
+        jdbcTemplate.update(
+            "DELETE FROM users WHERE id = ? AND NOT EXISTS (SELECT 1 FROM pessoa WHERE user_id = ?)",
+            usuario.getId(), usuario.getId()
+        );
+    }
 }
 
+    @Transactional
+    public AlunoDTO reativar(UUID id) {
+        Aluno aluno = repository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(id));
+
+        if (Boolean.TRUE.equals(aluno.getAtivo())) {
+            throw new IllegalStateException("Este aluno ja esta ativo.");
+        }
+
+        Optional<Aluno> mesmaMatricula = repository.findByMatricula(aluno.getMatricula());
+        if (mesmaMatricula.isPresent() && !mesmaMatricula.get().getId().equals(id)) {
+            throw new IllegalStateException("Matricula vinculada a outro aluno.");
+        }
+
+        Optional<Aluno> mesmoEmail = repository.findByEmail(aluno.getEmail());
+        if (mesmoEmail.isPresent() && !mesmoEmail.get().getId().equals(id)) {
+            throw new IllegalStateException("Email vinculado a outro aluno.");
+        }
+
+        aluno.setAtivo(true);
+
+        User usuario = aluno.getUser();
+
+    List<String> arquivos = jdbcTemplate.queryForList(
+        "SELECT arquivo_caminho FROM entrega_atividade WHERE aluno_id = ? AND arquivo_caminho IS NOT NULL",
+        String.class,
+        id
+    );
+
+    TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+        @Override
+        public void afterCommit() {
+            Path raiz = Paths.get(uploadDir).toAbsolutePath().normalize();
+
+            for (String arquivo : arquivos) {
+                try {
+                    Path destino = raiz.resolve(arquivo).normalize();
+
+                    if (destino.startsWith(raiz)
+                            && destino.toString().contains(id.toString())) {
+                        Files.deleteIfExists(destino);
+                    }
+                } catch (IOException e) {
+                    System.err.println("Falha ao remover arquivo do aluno: " + e.getMessage());
+                }
+            }
+        }
+    });
+        if (usuario != null) {
+            usuario.setEnabled(true);
+        } else {
+            demoUserProvisioningService.criarContaSeNecessario(
+                    aluno,
+                    aluno.getMatricula()
+            );
+        }
+
+        return alunoMapper.toAlunoDTO(repository.save(aluno));
+    }
     @Transactional
     public AlunoDTO update(UUID id, AlunoDTO obj){
         if(!repository.existsById(id)) throw new ResourceNotFoundException(id);
@@ -178,11 +289,11 @@ public void delete(UUID id) {
             while ((line = br.readLine()) != null) {
                 String[] values = line.split(",");
 
-                String matricula = values[headerMap.get("Matrícula")];
+                String matricula = values[headerMap.get("MatrÃ­cula")];
                 String nome = values[headerMap.get("Nome")];
                 String email = values[headerMap.get("E-mail")];
                 String telefone = values[headerMap.get("Celular")];
-                //Mantendo apenas números no telefone
+                //Mantendo apenas nÃºmeros no telefone
                 telefone = telefone.replaceAll("[^0-9]", "");
 
                 if (repository.existsByMatriculaOrEmail(matricula, email)) continue;
@@ -198,7 +309,7 @@ public void delete(UUID id) {
         if (cell == null) return "";
         switch (cell.getCellType()) {
             case NUMERIC:
-                // Matrícula e telefone podem vir como número; converte sem casas decimais
+                // MatrÃ­cula e telefone podem vir como nÃºmero; converte sem casas decimais
                 long longVal = (long) cell.getNumericCellValue();
                 return String.valueOf(longVal);
             case BOOLEAN:
@@ -227,14 +338,14 @@ public void delete(UUID id) {
                 Row row = sheet.getRow(i);
                 if (row == null) continue;
 
-                String matricula = getCellValueAsString(row.getCell(headerMap.get("Matrícula")));
+                String matricula = getCellValueAsString(row.getCell(headerMap.get("MatrÃ­cula")));
                 String nome = getCellValueAsString(row.getCell(headerMap.get("Nome")));
                 String email = getCellValueAsString(row.getCell(headerMap.get("E-mail")));
                 String telefone = getCellValueAsString(row.getCell(headerMap.get("Celular")));
 
                 if (matricula.isBlank() && nome.isBlank()) continue;
 
-                //Mantendo apenas números no telefone
+                //Mantendo apenas nÃºmeros no telefone
                 telefone = telefone.replaceAll("[^0-9]", "");
 
                 if(repository.existsByMatriculaOrEmail(matricula, email)) continue;

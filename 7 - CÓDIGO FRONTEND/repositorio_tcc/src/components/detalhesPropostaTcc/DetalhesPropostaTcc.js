@@ -8,6 +8,17 @@ import { ToastContainer, toast } from 'react-toastify';
 import { AtividadeService } from '../../service/AtividadeService';
 import { axiosInstance } from '../../service/BaseService';
 
+const formatarDataBR = (valor) => {
+    if (!valor) return '—';
+
+    const texto = String(valor);
+    const partes = texto.match(/^(\d{4})-(\d{2})-(\d{2})/);
+
+    if (!partes) return texto;
+
+    return `${partes[3]}/${partes[2]}/${partes[1]}`;
+};
+
 class DetalhesPropostaTcc extends Component {
 
     state = {
@@ -184,8 +195,25 @@ baixarArquivo = async (atividade) => {
 <p><strong>Categoria:</strong> {this.state.nomeCategoria || 'Carregando...'}</p>
 <p><strong>Subcategoria:</strong> {this.state.nomeSubcategoria || 'Carregando...'}</p>
 
+                                <div className="mb-3">
+                                    <strong>Tags do TCC:</strong>
+                                    <div className="d-flex flex-wrap gap-2 mt-2">
+                                        {(proposta.palavrasChave || []).length > 0
+                                            ? proposta.palavrasChave.map((tag, index) => (
+                                                <span
+                                                    key={tag.id || index}
+                                                    className="badge bg-light text-dark border"
+                                                >
+                                                    {tag.nome}
+                                                </span>
+                                            ))
+                                            : <span className="text-muted">Nenhuma tag cadastrada</span>
+                                        }
+                                    </div>
+                                </div>
+
                                 <p>
-                                    <strong>Status:</strong>{' '}
+                                    <strong>Situação do TCC:</strong>{' '}
                                     {proposta.status === 'AGUARDANDO_ORIENTADOR'
                                         ? 'Aguardando aprovação do orientador'
                                         : proposta.status === 'AGUARDANDO_COORDENADOR'
@@ -287,7 +315,7 @@ baixarArquivo = async (atividade) => {
             );
         })()}
 
-        <h6 className="mb-3">Histórico de atividades</h6>
+<h6 className="mb-3">Histórico de atividades</h6>
 
         {atividades.length === 0 ? (
             <p className="text-muted">
@@ -310,19 +338,46 @@ baixarArquivo = async (atividade) => {
                         {atividades.map(atividade => (
                             <tr key={atividade.idAtividade}>
                                 <td>{atividade.descricaoAtividade}</td>
-                                <td>{atividade.dataEntrega || '—'}</td>
+                                <td>{formatarDataBR(atividade.dataEntrega)}</td>
                                 <td>
-                                    {atividade.id ? (
-                                        <span className="badge bg-success">
-                                            Entregue
-                                        </span>
-                                    ) : (
-                                        <span className="badge bg-warning text-dark">
-                                            Pendente
-                                        </span>
-                                    )}
+                                    {(() => {
+    const prazo = atividade.dataEntrega
+        ? String(atividade.dataEntrega).slice(0, 10)
+        : null;
+
+    const entrega = atividade.dataRealizacao
+        ? String(atividade.dataRealizacao).slice(0, 10)
+        : null;
+
+    const hoje = new Date();
+    const dataHoje = [
+        hoje.getFullYear(),
+        String(hoje.getMonth() + 1).padStart(2, '0'),
+        String(hoje.getDate()).padStart(2, '0')
+    ].join('-');
+
+    const entregue = Boolean(atividade.id);
+
+    if (entregue) {
+        const atrasada = Boolean(prazo && entrega && entrega > prazo);
+
+        return (
+            <span className={`badge ${atrasada ? 'bg-danger' : 'bg-success'}`}>
+                {atrasada ? 'Entregue com atraso' : 'Entregue'}
+            </span>
+        );
+    }
+
+    const atrasada = Boolean(prazo && dataHoje > prazo);
+
+    return (
+        <span className={`badge ${atrasada ? 'bg-danger' : 'bg-warning text-dark'}`}>
+            {atrasada ? 'Atrasada' : 'Pendente'}
+        </span>
+    );
+})()}
                                 </td>
-                                <td>{atividade.dataRealizacao || '—'}</td>
+                                <td>{formatarDataBR(atividade.dataRealizacao)}</td>
                                 <td>{atividade.nota ?? '—'}</td>
                             </tr>
                         ))}

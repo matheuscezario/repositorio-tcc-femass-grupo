@@ -69,7 +69,7 @@ podeAprovarCoordenador = (row) => {
         sortable: true
     },
     {
-        name: 'Status',
+        name: 'Situação do TCC',
         selector: row =>
             row.status === 'AGUARDANDO_ORIENTADOR'
                 ? 'Aguardando Orientador'
@@ -125,7 +125,7 @@ columnsAcompanhamento = [
         sortable: true
     },
     {
-        name: 'Status',
+        name: 'Situação do TCC',
         cell: row => (
             <span className="badge bg-warning text-dark">
                 Aguardando Coordenador

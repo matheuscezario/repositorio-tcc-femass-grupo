@@ -27,7 +27,7 @@ class MeuTCC extends Component {
         orientador: '',
         selectedCategoria: '',
         selectedSubcategoria: '',
-        selectedKeywords: '',
+        selectedKeywords: [],
         changesMade: false,
         optionsCategorias: [],
         optionsSubcategorias: [],
@@ -173,7 +173,7 @@ fillOptionsCursos = () => {
             status: '',
             selectedCategoria: '',
             selectedSubcategoria: '',
-            selectedKeywords: '',
+            selectedKeywords: [],
             changesMade: false,
             optionsCategorias: [],
             optionsSubcategorias: [],
@@ -191,7 +191,10 @@ fillOptionsCursos = () => {
             resumo: this.state.tccOriginal.resumo || '',
             selectedCategoria: this.state.tccOriginal.categoria,
             selectedSubcategoria: this.state.tccOriginal.subcategoria,
-            selectedKeywords: this.state.tccOriginal.keywords,
+            selectedKeywords: (this.state.tccOriginal.palavrasChave || []).map(tag => ({
+                value: tag.id,
+                label: tag.nome
+            })),
             changesMade: false
         });
     }
@@ -209,7 +212,11 @@ fillOptionsCursos = () => {
         const data = {
             titulo: tituloTcc.trim(),
             resumo: resumo.trim(),
-            idSubcategoria: selectedSubcategoria.value
+            idSubcategoria: selectedSubcategoria.value,
+            palavrasChave: (this.state.selectedKeywords || []).map(tag => ({
+                id: tag.value && !tag.__isNew__ ? tag.value : null,
+                nome: tag.label
+            }))
         };
 
         this.tccService.editarPeloAluno(tccOriginal.id, data)
@@ -235,7 +242,10 @@ fillOptionsCursos = () => {
         resumo: this.state.resumo,
         idOrientador: this.state.selectedOrientador.value,
         idCurso: this.state.selectedCurso.value,
-    idSubcategoria: this.state.selectedSubcategoria.value
+    idSubcategoria: this.state.selectedSubcategoria.value,
+        palavrasChave: (this.state.selectedKeywords || []).map(tag => ({
+            nome: tag.label
+        }))
     };
 
     this.tccService.criarProposta(data)
@@ -329,7 +339,10 @@ fillOptionsCursos = () => {
                     status: response.data.status,
                     selectedCategoria: null,
                     selectedSubcategoria: null,
-                    keywords: response.data.keywords
+                    selectedKeywords: (response.data.palavrasChave || []).map(tag => ({
+                        value: tag.id,
+                        label: tag.nome
+                    }))
                 });
                 this.carregarClassificacaoTcc(response.data.idCategoria, response.data.idSubcategoria);
             })
@@ -367,6 +380,26 @@ fillOptionsCursos = () => {
             </p>
 
             <form onSubmit={this.submitTCCForm}>
+                <div className="mb-3">
+                    <label className="form-label fw-bold">
+                        Tags do TCC
+                    </label>
+                    {/* Tags do TCC (edicao) */}
+                    <CreatableSelect
+                        isMulti
+                        options={this.state.optionsKeywords || []}
+                        value={this.state.selectedKeywords || []}
+                        onChange={(options) =>
+                            this.handleChangeSelect(options || [], 'selectedKeywords')
+                        }
+                        placeholder="Digite uma tag e pressione Enter"
+                        formatCreateLabel={(input) => `Adicionar "${input}"`}
+                        noOptionsMessage={() => "Digite uma tag"}
+                    />
+                    <small className="text-muted">
+                        Adicione ou remova as tags do seu trabalho.
+                    </small>
+                </div>
                 <div className="mb-3">
                     <label className="form-label fw-bold">
                         Titulo do TCC
@@ -478,6 +511,25 @@ fillOptionsCursos = () => {
                 Preencha os dados da sua proposta e escolha um professor orientador.
             </p>
             <form onSubmit={this.submitPropostaForm}>
+                <div className="mb-3">
+                    <label className="form-label fw-bold">
+                        Tags do TCC
+                    </label>
+                    <CreatableSelect
+                        isMulti
+                        options={this.state.optionsKeywords || []}
+                        value={this.state.selectedKeywords || []}
+                        onChange={(options) =>
+                            this.handleChangeSelect(options || [], 'selectedKeywords')
+                        }
+                        placeholder="Digite uma tag e pressione Enter"
+                        formatCreateLabel={(input) => `Adicionar "${input}"`}
+                        noOptionsMessage={() => "Digite uma tag"}
+                    />
+                    <small className="text-muted">
+                        Adicione palavras que identifiquem o tema do seu trabalho.
+                    </small>
+                </div>
 
     <div className="mb-3">
         <label className="form-label fw-bold">
@@ -629,7 +681,24 @@ fillOptionsCursos = () => {
             </div>
 
             <div className="mb-3">
-                <strong>Status:</strong>{' '}
+                <strong>Tags:</strong>
+                <div className="d-flex flex-wrap gap-2 mt-2">
+                    {(this.state.selectedKeywords || []).length > 0
+                        ? this.state.selectedKeywords.map((tag, index) => (
+                            <span
+                                key={tag.value || index}
+                                className="badge bg-light text-dark border"
+                            >
+                                {tag.label}
+                            </span>
+                        ))
+                        : <span className="text-muted">Nenhuma tag cadastrada</span>
+                    }
+                </div>
+            </div>
+
+            <div className="mb-3">
+                <strong>Situação:</strong>{' '}
                 <span className="text-success fw-bold">
                     Proposta Aprovada
                 </span>
@@ -669,7 +738,24 @@ fillOptionsCursos = () => {
             </div>
 
             <div className="mb-3">
-                <strong>Status:</strong>{' '}
+                <strong>Tags:</strong>
+                <div className="d-flex flex-wrap gap-2 mt-2">
+                    {(this.state.selectedKeywords || []).length > 0
+                        ? this.state.selectedKeywords.map((tag, index) => (
+                            <span
+                                key={tag.value || index}
+                                className="badge bg-light text-dark border"
+                            >
+                                {tag.label}
+                            </span>
+                        ))
+                        : <span className="text-muted">Nenhuma tag cadastrada</span>
+                    }
+                </div>
+            </div>
+
+            <div className="mb-3">
+                <strong>Situação:</strong>{' '}
                 {this.state.status === 'AGUARDANDO_ORIENTADOR'
                     ? 'Aguardando aprovação do orientador'
                     : 'Aguardando aprovação do coordenador'}

@@ -1,6 +1,7 @@
 package com.example.repositorioDeTcc.dto;
 
 import java.util.UUID;
+import java.util.List;
 
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -14,5 +15,6 @@ public class TCCEdicaoAlunoDTO {
     private String titulo;
     private String resumo;
     private UUID idSubcategoria;
+    private List<PalavraChaveDTO> palavrasChave;
 
 }

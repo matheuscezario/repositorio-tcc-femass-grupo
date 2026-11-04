@@ -1,4 +1,4 @@
-import React, { Component } from 'react'
+﻿import React, { Component } from 'react'
 import Navbar from '../navbar/Navbar';
 import { Button, Modal } from 'react-bootstrap';
 import { ToastContainer, toast } from 'react-toastify';
@@ -29,6 +29,12 @@ class Aluno extends Component {
         showModalRegistration: false,
         showModalView: false,
         showModalUpload: false,
+        showModalInactiveStudents: false,
+        inactiveStudents: [],
+        inactiveStudentsLoading: false,
+        inactiveStudentsError: '',
+        inactiveStudentToReactivate: null,
+        reactivatingStudent: false,
         nomeCompleto: null,
         telefone: null,
         matricula: null,
@@ -51,7 +57,7 @@ class Aluno extends Component {
              width: '40%'
           },
         {
-            name: 'Ações',
+            name: 'AÃ§Ãµes',
             cell: user => <>
                 <button className="btn btn-outline-secondary mx-1 px-1 py-0" data-toggle="tooltip" data-placement="top" title="Visualizar Instituto" onClick={() => this.beginView(user)}><i className="bi bi-eye"></i></button>
                 <button className="btn btn-outline-secondary mx-1 px-1 py-0" data-toggle="tooltip" data-placement="top" title="Editar Instituto" onClick={() => this.beginEdit(user)}><i className="bi bi-pencil"></i></button>
@@ -144,6 +150,88 @@ class Aluno extends Component {
 
     }
 
+    openInactiveStudents = async () => {
+        this.setState({
+            showModalInactiveStudents: true,
+            inactiveStudentsLoading: true,
+            inactiveStudentsError: '',
+            inactiveStudents: [],
+            inactiveStudentToReactivate: null
+        });
+
+        try {
+            const token = sessionStorage.getItem('token');
+
+            const response = await fetch(window.server + "/alunos/inativos", {
+                method: 'GET',
+                headers: {
+                    'Authorization': 'Bearer ' + token
+                }
+            });
+
+            if (!response.ok) {
+                if (response.status === 403) {
+                    throw new Error('Apenas administradores podem consultar alunos inativos.');
+                }
+                throw new Error('NÃ£o foi possÃ­vel carregar os alunos inativos.');
+            }
+
+            const alunos = await response.json();
+
+            this.setState({
+                inactiveStudents: alunos,
+                inactiveStudentsLoading: false
+            });
+        } catch (error) {
+            this.setState({
+                inactiveStudentsLoading: false,
+                inactiveStudentsError: error.message
+            });
+        }
+    }
+    reactivateInactiveStudent = async () => {
+        const aluno = this.state.inactiveStudentToReactivate;
+
+        if (!aluno || this.state.reactivatingStudent) {
+            return;
+        }
+
+        this.setState({ reactivatingStudent: true });
+
+        try {
+            const token = sessionStorage.getItem('token');
+
+            const response = await fetch(
+                window.server + "/alunos/" + aluno.id + "/reativar",
+                {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': 'Bearer ' + token
+                    }
+                }
+            );
+
+            if (!response.ok) {
+                if (response.status === 403) {
+                    throw new Error('Apenas administradores podem reativar alunos.');
+                }
+                throw new Error('NÃ£o foi possÃ­vel reativar o aluno.');
+            }
+
+            toast.success('Aluno reativado com sucesso!');
+
+            this.setState({
+                inactiveStudentToReactivate: null,
+                reactivatingStudent: false
+            });
+
+            this.fillList();
+            this.openInactiveStudents();
+        } catch (error) {
+            toast.error(error.message);
+            this.setState({ reactivatingStudent: false });
+        }
+    }
     beginRegistration = () => {
         this.setState({ showModalRegistration: true });
     }
@@ -171,7 +259,7 @@ class Aluno extends Component {
                 if(response.ok) {
                     return response.json();
                 } else{
-                    throw new Error('Erro na requisição: ' + response.status);
+                    throw new Error('Erro na requisiÃ§Ã£o: ' + response.status);
                 }
             }).then((data) => {
                 if (data.resumo === null) data.resumo = '';
@@ -192,7 +280,7 @@ class Aluno extends Component {
         if(!this.state.password || !this.state.passwordConfirm) return false;
         const passwordConfirmElement = document.getElementById('passwordConfirm');
         if(this.state.password !== this.state.passwordConfirm) {
-          passwordConfirmElement.setCustomValidity('As senhas não conferem');
+          passwordConfirmElement.setCustomValidity('As senhas nÃ£o conferem');
           passwordConfirmElement.classList.add('is-invalid');
         } else {
             passwordConfirmElement.setCustomValidity('');
@@ -231,7 +319,7 @@ class Aluno extends Component {
         event.preventDefault();
         
         if(!this.validateForm()) {
-            toast.warning('Campos preenchidos inválidos', {
+            toast.warning('Campos preenchidos invÃ¡lidos', {
                 position: "top-right",
                 autoClose: 2000,
                 hideProgressBar: false,
@@ -274,13 +362,13 @@ class Aluno extends Component {
             if (response.ok) {
                 return response.json();
             } else {
-                throw new Error('Erro na requisição: ' + response.status);
+                throw new Error('Erro na requisiÃ§Ã£o: ' + response.status);
             }
         })
         .then(data => {
             if(this.state.toEditItem){
                 this.setState({showModalEdit: false})
-                toast.success('Usuário atualizado!', {
+                toast.success('UsuÃ¡rio atualizado!', {
                     position: "top-right",
                     autoClose: 2000,
                     hideProgressBar: false,
@@ -291,7 +379,7 @@ class Aluno extends Component {
                   });
             } else{
                 this.closeModal('Registration')
-                toast.success('Usuário criado!', {
+                toast.success('UsuÃ¡rio criado!', {
                     position: "top-right",
                     autoClose: 2000,
                     hideProgressBar: false,
@@ -303,7 +391,7 @@ class Aluno extends Component {
             }
             this.clearState();
             this.fillList();
-            // Lógica para lidar com a resposta da API
+            // LÃ³gica para lidar com a resposta da API
         })
         .catch(error => {
             toast.error('Ocorreu um erro', {
@@ -315,7 +403,7 @@ class Aluno extends Component {
                 draggable: true,
                 progress: undefined,
               });
-            // Lógica para lidar com o erro
+            // LÃ³gica para lidar com o erro
             this.clearState();
         });
     }
@@ -339,7 +427,7 @@ class Aluno extends Component {
                 if(response.ok) {
                     this.fillList();
                     this.setState({ showModalDeletion: false });
-                    toast.success('Aluno excluído!', {
+                    toast.success('Aluno excluÃ­do!', {
                         position: "top-right",
                         autoClose: 2000,
                         hideProgressBar: false,
@@ -350,7 +438,7 @@ class Aluno extends Component {
                       });
                 }
                 else{
-                    toast.error('Não foi possível excluir', {
+                    toast.error('NÃ£o foi possÃ­vel excluir', {
                         position: "top-right",
                         autoClose: 2000,
                         hideProgressBar: false,
@@ -359,7 +447,7 @@ class Aluno extends Component {
                         draggable: true,
                         progress: undefined,
                       });
-                    throw new Error('Erro na requisição: ' + response.status);
+                    throw new Error('Erro na requisiÃ§Ã£o: ' + response.status);
                 }
             });
     }
@@ -387,7 +475,7 @@ class Aluno extends Component {
                 if(response.ok) {
                     return response.json();
                 } else{
-                    throw new Error('Erro na requisição: ' + response.status);
+                    throw new Error('Erro na requisiÃ§Ã£o: ' + response.status);
                 }
             }).then((data) => {
                 this.setState({ toViewItem: data, showModalView: true });
@@ -432,7 +520,7 @@ class Aluno extends Component {
                     this.fillList();
                 } 
             }).catch((error) => {
-                let errorMessage = 'Servidor indisponível';
+                let errorMessage = 'Servidor indisponÃ­vel';
                 if(error.response) {errorMessage = TranslationService.translate(error.response.data.message);}
                 toast.error('Erro ao carregar arquivo: ' + errorMessage, {
                     position: "top-right",
@@ -466,7 +554,7 @@ class Aluno extends Component {
                 
 
                 <div className='col-sm-10 col-md-6 col-lg-5 col-xl-4 ms-5'>
-                    <div className="card mx-3" style={{ maxWidth: '500px' }}>
+                    <div className="card mx-3" style={{ maxWidth: '650px' }}>
                         <div className="card-body">
                             <button 
                                 type="button" 
@@ -499,7 +587,7 @@ class Aluno extends Component {
                                 customStyles={this.tableStyle}
                                 responsive
                                 fixedHeader
-                                noDataComponent="Nenhum usuário encontrado"
+                                noDataComponent="Nenhum usuÃ¡rio encontrado"
                                 subHeader
                                 subHeaderComponent={
                                     <div className='form-group'>
@@ -533,7 +621,7 @@ class Aluno extends Component {
                             </div>
                             <div className="mb-3 row justify-content-center">
                                 <div className='col-12'>
-                                    <label htmlFor="matricula" className='required'>Matrícula</label>
+                                    <label htmlFor="matricula" className='required'>MatrÃ­cula</label>
                                     <input type="text" className="form-control" id="matricula" name="matricula" required maxLength={11} onChange={this.handleChange}></input>
                                 </div>
                             </div>
@@ -572,9 +660,101 @@ class Aluno extends Component {
                     </form>
                 </Modal>
 
+                <Modal
+                    show={this.state.showModalInactiveStudents}
+                    onHide={() => {
+                        if (!this.state.reactivatingStudent) {
+                            this.setState({
+                                showModalInactiveStudents: false,
+                                inactiveStudentToReactivate: null
+                            });
+                        }
+                    }}
+                    centered
+                    size="lg"
+                >
+                    <Modal.Header closeButton className="bg-dark text-white" closeVariant="white">
+                        <Modal.Title>Alunos inativos</Modal.Title>
+                    </Modal.Header>
+
+                    <Modal.Body>
+                        {this.state.inactiveStudentsLoading ? (
+                            <p>Carregando alunos inativos...</p>
+                        ) : this.state.inactiveStudentsError ? (
+                            <div className="alert alert-danger">
+                                {this.state.inactiveStudentsError}
+                            </div>
+                        ) : this.state.inactiveStudents.length === 0 ? (
+                            <p>Nenhum aluno inativo encontrado.</p>
+                        ) : (
+                            <div className="list-group">
+                                {this.state.inactiveStudents.map(aluno => (
+                                    <div
+                                        key={aluno.id}
+                                        className="list-group-item d-flex justify-content-between align-items-center gap-3"
+                                    >
+                                        <div>
+                                            <strong>{aluno.nomeCompleto}</strong>
+                                            <div className="text-muted">
+                                                MatrÃ­cula: {aluno.matricula}
+                                            </div>
+                                        </div>
+
+                                        <Button
+                                            variant="outline-success"
+                                            disabled={this.state.reactivatingStudent}
+                                            onClick={() => this.setState({
+                                                inactiveStudentToReactivate: aluno
+                                            })}
+                                        >
+                                            Reativar
+                                        </Button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {this.state.inactiveStudentToReactivate && (
+                            <div className="alert alert-warning mt-3">
+                                <p>
+                                    Deseja realmente reativar o aluno
+                                    <strong> {this.state.inactiveStudentToReactivate.nomeCompleto}</strong>?
+                                </p>
+                                <p className="mb-0">
+                                    MatrÃ­cula: {this.state.inactiveStudentToReactivate.matricula}
+                                </p>
+                            </div>
+                        )}
+                    </Modal.Body>
+
+                    <Modal.Footer>
+                        <Button
+                            variant="secondary"
+                            disabled={this.state.reactivatingStudent}
+                            onClick={() => this.setState({
+                                showModalInactiveStudents: false,
+                                inactiveStudentToReactivate: null
+                            })}
+                        >
+                            Fechar
+                        </Button>
+
+                        {this.state.inactiveStudentToReactivate && (
+                            <Button
+                                variant="success"
+                                disabled={this.state.reactivatingStudent}
+                                onClick={this.reactivateInactiveStudent}
+                            >
+                                {this.state.reactivatingStudent
+                                    ? 'Reativando...'
+                                    : 'Confirmar reativaÃ§Ã£o'}
+                            </Button>
+                        )}
+                    </Modal.Footer>
+                </Modal>
                 <Modal show={this.state.showModalDeletion} onHide={() => this.closeModal('Deletion')} centered>
                     <Modal.Header className='bg-dark text-white' closeButton closeVariant='white'>
-                    <Modal.Title>Confirmar Exclusão</Modal.Title>
+                    <Modal.Title>Confirmar ExclusÃ£o</Modal.Title>
                     </Modal.Header>
                     <Modal.Body>Tem certeza que deseja excluir o aluno {this.state.toDeleteItem && <span className='fw-bold'>{this.state.toDeleteItem.nome}</span>}?</Modal.Body>
                     <Modal.Footer>
@@ -598,7 +778,7 @@ class Aluno extends Component {
                                 <p>{this.state.toViewItem.nomeCompleto}</p>
                             </div>
                             <div>
-                                <h5>Matrícula:</h5>
+                                <h5>MatrÃ­cula:</h5>
                                 <p>{this.state.toViewItem.matricula}</p>
                             </div>
                             <div>
@@ -671,7 +851,7 @@ class Aluno extends Component {
 
                 <Modal show={this.state.showModalUpload} onHide={() => this.closeModal('Upload')} centered size='md'>
                     <Modal.Header closeButton className='bg-dark text-white' closeVariant='white'>
-                        <Modal.Title>Importação de Alunos</Modal.Title>
+                        <Modal.Title>ImportaÃ§Ã£o de Alunos</Modal.Title>
                     </Modal.Header>
                     <form onSubmit={this.uploadFile}>
                     <Modal.Body>

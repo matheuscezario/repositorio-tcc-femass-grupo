@@ -66,7 +66,7 @@ const ProtectedDetalhesPropostaTcc = (props) => (
       <ProtectedRoute component={() => <ChangePassword component={Users} {...props} />} />
     );
     const ProtectedCategoria = (props) => (
-      <ProtectedRoute component={() => <ChangePassword component={Categoria} {...props} />} />
+      <ProtectedRoute perfisPermitidos={["COORDENADOR"]} component={() => <ChangePassword component={Categoria} {...props} />} />
     );
     const ProtectedPalavraChave = (props) => (
       <ProtectedRoute component={() => <ChangePassword component={PalavraChave} {...props} />} />

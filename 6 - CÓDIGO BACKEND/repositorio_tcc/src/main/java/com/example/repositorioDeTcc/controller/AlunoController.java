@@ -37,6 +37,12 @@ public class AlunoController {
         return ResponseEntity.ok().body(result);
     }
 
+    @GetMapping(value = "/inativos")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<AlunoMinDTO>> findInativos() {
+        List<AlunoMinDTO> result = service.findInativos();
+        return ResponseEntity.ok(result);
+    }
     @GetMapping(value = "/turma/{turmaId}")
     public ResponseEntity<List<AlunoMinDTO>> findByTurma(@PathVariable UUID turmaId){
         List<AlunoMinDTO> result = service.findByTurmaId(turmaId);
@@ -58,7 +64,14 @@ public class AlunoController {
 
     }
 
+    @PutMapping(value = "/{id}/reativar")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<AlunoDTO> reativar(@PathVariable UUID id) {
+        AlunoDTO aluno = service.reativar(id);
+        return ResponseEntity.ok(aluno);
+    }
     @DeleteMapping(value = "/{id}")
+    @PreAuthorize("hasRole('ADMIN') or @perfilUsuarioService.buscarPerfis(authentication.principal).contains('PROFESSOR')")
     public ResponseEntity<?> delete(@PathVariable(value = "id")UUID id){
         service.delete(id);
 
