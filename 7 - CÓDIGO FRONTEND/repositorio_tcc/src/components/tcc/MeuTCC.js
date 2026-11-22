@@ -3,7 +3,8 @@ import Navbar from '../navbar/Navbar';
 import '../../assets/css/tcc.css';
 import Select from 'react-select'
 import CreatableSelect from 'react-select/creatable';
-import { Button } from 'react-bootstrap';
+import { AtividadeService } from '../../service/AtividadeService';
+import { EntregaAtividadeService } from '../../service/EntregaAtividadeService';
 import { ToastContainer, toast } from 'react-toastify';
 import { motion } from 'framer-motion';
 import { TCCService } from '../../service/TCCService';
@@ -17,6 +18,13 @@ import { CursoService } from '../../service/CursoService';
 class MeuTCC extends Component {
   
     state = {
+        atividades: [],
+        carregandoAtividades: true,
+        erroAtividades: false,
+        atividadeSelecionada: '',
+        arquivoSelecionado: null,
+        enviandoArquivo: false,
+        mostrarEnvio: false,
         tccExistente: false,
         editandoTcc: false,
         tccOriginal: {},
@@ -35,6 +43,125 @@ class MeuTCC extends Component {
     }
 
     tccService = new TCCService();
+    atividadeService = new AtividadeService();
+    entregaService = new EntregaAtividadeService();
+
+    carregarAtividades = async () => {
+        this.setState({ carregandoAtividades: true, erroAtividades: false });
+        try {
+            const response = await this.atividadeService.findMine();
+            this.setState({ atividades: response.data || [] });
+        } catch (error) {
+            this.setState({ erroAtividades: true });
+        } finally {
+            this.setState({ carregandoAtividades: false });
+        }
+    };
+
+    enviarArquivo = async (event) => {
+        event.preventDefault();
+        const { atividadeSelecionada, arquivoSelecionado, enviandoArquivo } = this.state;
+        if (!atividadeSelecionada || !arquivoSelecionado || enviandoArquivo) return;
+        this.setState({ enviandoArquivo: true });
+        try {
+            await this.entregaService.entregar(atividadeSelecionada, arquivoSelecionado);
+            this.setState({ mostrarEnvio: false, atividadeSelecionada: '', arquivoSelecionado: null });
+            toast.success('Arquivo enviado! Esta é a versão atual do TCC para os responsáveis.');
+            await this.carregarAtividades();
+        } catch (error) {
+            toast.error('Não foi possível enviar o arquivo. Tente novamente.');
+        } finally {
+            this.setState({ enviandoArquivo: false });
+        }
+    };
+
+    baixarArquivo = async (atividade) => {
+        try {
+            const response = await this.entregaService.downloadArquivo(atividade.id);
+            const url = window.URL.createObjectURL(response.data);
+            const link = window.document.createElement('a');
+            link.href = url;
+            link.download = atividade.arquivoNome;
+            window.document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+        } catch (error) {
+            toast.error('Não foi possível baixar o arquivo.');
+        }
+    };
+
+    renderEnvioAtividades = () => {
+        const { atividades, carregandoAtividades, erroAtividades, mostrarEnvio,
+            atividadeSelecionada, arquivoSelecionado, enviandoArquivo } = this.state;
+        const arquivoAtual = atividades.filter(item => item.id && item.arquivoNome)
+            .sort((a, b) => (b.dataHoraEnvio || b.dataRealizacao || '')
+                .localeCompare(a.dataHoraEnvio || a.dataRealizacao || ''))[0];
+        const selecionada = atividades.find(item => item.idAtividade === atividadeSelecionada);
+
+        return (
+            <section className="bg-white rounded shadow-sm col-12 col-md-8 col-lg-6 m-auto p-4 mt-4">
+                <h4>Atividades e versão atual do TCC</h4>
+                <p className="text-muted">
+                    Envie o arquivo de uma atividade. A entrega mais recente será a versão atual
+                    disponível para professores, orientadores e coordenadores responsáveis.
+                    Reenviar uma atividade substitui o arquivo anterior daquela entrega.
+                </p>
+                {carregandoAtividades ? <p role="status">Carregando atividades...</p> : erroAtividades ? (
+                    <div className="alert alert-warning">
+                        Não foi possível carregar as atividades.
+                        <button type="button" className="btn btn-link" onClick={this.carregarAtividades}>Tentar novamente</button>
+                    </div>
+                ) : (
+                    <>
+                        {arquivoAtual ? (
+                            <div className="border rounded p-3 mb-3">
+                                <strong>Versão atual:</strong> {arquivoAtual.arquivoNome}
+                                <div className="text-muted small">Atividade: {arquivoAtual.descricaoAtividade}</div>
+                                <button type="button" className="btn btn-outline-primary mt-2"
+                                    onClick={() => this.baixarArquivo(arquivoAtual)}>
+                                    <i className="bi bi-download me-2"></i>Baixar versão atual
+                                </button>
+                            </div>
+                        ) : <p className="text-muted">Nenhum arquivo enviado até o momento.</p>}
+                        {atividades.length === 0 ? (
+                            <div className="alert alert-info mb-0">Nenhuma atividade cadastrada para sua turma. Solicite o cadastro ao professor.</div>
+                        ) : mostrarEnvio ? (
+                            <form onSubmit={this.enviarArquivo}>
+                                <label htmlFor="atividade-tcc" className="form-label">Atividade</label>
+                                <select id="atividade-tcc" className="form-select mb-3" required
+                                    value={atividadeSelecionada} disabled={enviandoArquivo}
+                                    onChange={event => this.setState({ atividadeSelecionada: event.target.value })}>
+                                    <option value="">Selecione uma atividade</option>
+                                    {atividades.map(item => <option key={item.idAtividade} value={item.idAtividade}>
+                                        {item.descricaoAtividade}{item.arquivoNome ? ' (já enviada)' : ''}
+                                    </option>)}
+                                </select>
+                                {selecionada?.arquivoNome && <p className="text-muted">O arquivo {selecionada.arquivoNome} será substituído.</p>}
+                                <label htmlFor="arquivo-tcc" className="form-label">Arquivo da atividade / TCC</label>
+                                <input id="arquivo-tcc" type="file" className="form-control mb-3" required
+                                    disabled={enviandoArquivo}
+                                    onChange={event => this.setState({ arquivoSelecionado: event.target.files[0] || null })} />
+                                <div className="d-flex flex-wrap gap-2">
+                                    <button type="submit" className="btn btn-primary"
+                                        disabled={enviandoArquivo || !atividadeSelecionada || !arquivoSelecionado}>
+                                        {enviandoArquivo ? 'Enviando...' : 'Enviar arquivo / atualizar TCC'}
+                                    </button>
+                                    <button type="button" className="btn btn-outline-secondary" disabled={enviandoArquivo}
+                                        onClick={() => this.setState({ mostrarEnvio: false, arquivoSelecionado: null, atividadeSelecionada: '' })}>Cancelar</button>
+                                </div>
+                            </form>
+                        ) : (
+                            <button type="button" className="btn btn-primary w-100"
+                                onClick={() => this.setState({ mostrarEnvio: true })}>
+                                <i className="bi bi-upload me-2"></i>Enviar atividade / atualizar TCC
+                            </button>
+                        )}
+                    </>
+                )}
+            </section>
+        );
+    };
     categoriaService = new CategoriaService();
     subcategoriaService = new SubcategoriaService();
     orientadorService = new OrientadorService();
@@ -365,6 +492,7 @@ fillOptionsCursos = () => {
 
     componentDidMount() {
     this.getMyTcc();
+    this.carregarAtividades();
     this.fillOptionsCategorias();
     this.fillOptionsOrientadores();
     this.fillOptionsCursos();
@@ -796,6 +924,7 @@ return (
 
             <div className='px-4'>
                 {document}
+                {this.state.tccExistente && !this.state.editandoTcc && this.renderEnvioAtividades()}
             </div>
         </motion.div>
     </div>

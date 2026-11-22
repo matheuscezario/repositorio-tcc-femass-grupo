@@ -78,6 +78,11 @@ ProfessorTCCRepository professorRepository;
         Atividade atividade = atividadeRepository.findById(atividadeId)
                 .orElseThrow(() -> new ResourceNotFoundException(atividadeId));
 
+        if (aluno.getTurma() == null || atividade.getTurma() == null
+                || !aluno.getTurma().getId().equals(atividade.getTurma().getId())) {
+            throw new AccessDeniedException("Você só pode enviar atividades da sua turma.");
+        }
+
         Optional<EntregaAtividade> existente = repository.findByAtividadeIdAndAlunoId(atividadeId, aluno.getId());
         EntregaAtividade entrega = existente.orElse(new EntregaAtividade(atividade, aluno));
 

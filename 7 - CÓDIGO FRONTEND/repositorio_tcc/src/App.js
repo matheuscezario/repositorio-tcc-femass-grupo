@@ -22,6 +22,7 @@ import Perfil from './components/perfil/Perfil.js';
 import FirstAccess from './components/firstAccess/FirstAccess.js';
 import PalavraChave from './components/palavraChave/PalavraChave.js';
 import Atividade from './components/atividade/Atividade.js';
+import DetalhesAtividade from './components/atividade/DetalhesAtividade.js';
 import Turma from './components/turma/Turma.js';
 import SolicitacaoTcc from './components/solicitacaoTcc/SolicitacaoTcc.js';
 import DetalhesPropostaTcc from './components/detalhesPropostaTcc/DetalhesPropostaTcc.js';
@@ -83,6 +84,9 @@ const ProtectedDetalhesPropostaTcc = (props) => (
     const ProtectedAtividade = (props) => (
       <ProtectedRoute component={() => <ChangePassword component={Atividade} {...props} />} />
     );
+    const ProtectedDetalhesAtividade = (props) => (
+      <ProtectedRoute component={() => <ChangePassword component={DetalhesAtividade} {...props} />} />
+    );
     const ProtectedTurma = (props) => (
       <ProtectedRoute component={() => <ChangePassword component={Turma} {...props} />} />
     );
@@ -110,6 +114,7 @@ const ProtectedDetalhesPropostaTcc = (props) => (
             <Route exact path="/perfil" element={<ProtectedPerfil />}></Route>
             <Route exact path="/first-access" element={<FirstAccess />}></Route>
             <Route exact path="/atividades" element={<ProtectedAtividade />}></Route>
+            <Route path="/atividades/:turmaId/:atividadeId" element={<ProtectedDetalhesAtividade />} />
             <Route exact path="/turmas" element={<ProtectedTurma />}></Route>
           </Routes>
           <PasswordChangeModal />
